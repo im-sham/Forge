@@ -6,8 +6,16 @@ import json
 
 from mcp.server.fastmcp import FastMCP
 
+from datetime import datetime, timezone
+
 from forge_cli.config import load_config
-from forge_cli.incident_store import find_incident, get_all_incidents, list_incidents
+from forge_cli.incident_store import (
+    find_incident,
+    generate_id,
+    get_all_incidents,
+    list_incidents,
+    save_incident,
+)
 from forge_cli.models import FailureType, Incident, Severity
 
 mcp = FastMCP("Forge", json_response=True)
@@ -44,6 +52,82 @@ def _incident_to_text(incident: Incident) -> str:
     if incident.playbook_entry:
         lines.append(f"Playbook: {incident.playbook_entry}")
     return "\n".join(lines)
+
+
+@mcp.tool()
+def forge_log(
+    project: str,
+    agent: str,
+    severity: str,
+    failure_type: str,
+    expected_behavior: str,
+    actual_behavior: str,
+    platform: str = "",
+    context: str = "",
+    root_cause: str = "",
+    immediate_fix: str = "",
+    systemic_takeaway: str = "",
+    tags: str = "",
+    related_incidents: str = "",
+    reported_by: str = "",
+) -> str:
+    """Log a new forge incident. Creates a YAML file in the incidents directory.
+
+    Args:
+        project: Project name (e.g., "mila", "aegis", "scalescore")
+        agent: Agent or component that failed (e.g., "respond-node", "mcp-server")
+        severity: Severity level — must be one of: cosmetic, functional, safety-critical
+        failure_type: Failure category — must be one of: hallucination, tool_misuse, scope_creep, safety_boundary_violation, performance_degradation, context_loss, confidence_miscalibration, instruction_drift, error_handling_failure, integration_failure, adversarial_vulnerability, other
+        expected_behavior: What the system should have done
+        actual_behavior: What actually happened
+        platform: AI tool/platform (e.g., "claude-code", "cursor", "chatgpt"). Defaults to empty.
+        context: Additional context about when/where this occurred
+        root_cause: Root cause if known
+        immediate_fix: Fix applied or recommended
+        systemic_takeaway: Broader lesson learned
+        tags: Comma-separated tags (e.g., "silent-fallback,observability-gap")
+        related_incidents: Comma-separated related incident IDs (e.g., "2026-03-04-001,2026-03-04-002")
+        reported_by: Who reported this. Defaults to config default_reporter.
+    """
+    cfg = load_config()
+
+    # Validate severity
+    valid_severities = [s.value for s in Severity]
+    if severity not in valid_severities:
+        return f"Invalid severity '{severity}'. Must be one of: {', '.join(valid_severities)}"
+
+    # Validate failure_type
+    valid_types = [f.value for f in FailureType]
+    if failure_type not in valid_types:
+        return f"Invalid failure_type '{failure_type}'. Must be one of: {', '.join(valid_types)}"
+
+    now = datetime.now(timezone.utc)
+    incident_id = generate_id(cfg.incidents_dir, now.date())
+
+    tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
+    related_list = [r.strip() for r in related_incidents.split(",") if r.strip()] if related_incidents else []
+
+    incident = Incident(
+        id=incident_id,
+        timestamp=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        reported_by=reported_by or cfg.default_reporter,
+        project=project,
+        agent=agent,
+        platform=platform,
+        severity=severity,
+        failure_type=failure_type,
+        expected_behavior=expected_behavior,
+        actual_behavior=actual_behavior,
+        context=context,
+        root_cause=root_cause,
+        immediate_fix=immediate_fix,
+        systemic_takeaway=systemic_takeaway,
+        tags=tag_list,
+        related_incidents=related_list,
+    )
+
+    filepath = save_incident(incident, cfg.incidents_dir)
+    return f"Incident logged: {incident_id}\nSaved to: {filepath}"
 
 
 @mcp.tool()

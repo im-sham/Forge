@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from forge_cli.config import ForgeConfig
 
 

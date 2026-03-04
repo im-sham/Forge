@@ -381,11 +381,11 @@ def playbook_list(ctx: typer.Context) -> None:
         table.add_row(name, entry.name)
 
     console.print(table)
-    print_info(f"\nUse `forge playbook show <name>` to view an entry.")
+    print_info("\nUse `forge playbook show <name>` to view an entry.")
 
 
-@playbook_app.command()
-def show(
+@playbook_app.command("show")
+def playbook_show(
     name: str = typer.Argument(help="Playbook entry name (e.g., 'silent-fallback' or 'hallucination')"),
 ) -> None:
     """Show a specific playbook entry."""

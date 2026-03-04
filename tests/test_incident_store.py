@@ -1,5 +1,4 @@
 from datetime import date
-from pathlib import Path
 
 from forge_cli.incident_store import (
     find_incident,
