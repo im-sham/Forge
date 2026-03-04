@@ -1,0 +1,23 @@
+default_reporter: "sham"
+
+analysis:
+  provider: "anthropic"
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+
+# Suggested values shown during forge log (any value accepted)
+projects:
+  - mila
+  - scalescore
+  - aegis
+  - sentinel
+  - ghost-sentry
+
+platforms:
+  - claude-code
+  - claude-api
+  - cursor
+  - chatgpt
+  - codex
+  - copilot
+  - custom

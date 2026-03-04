@@ -1,0 +1,30 @@
+id: ""                              # Auto-generated: YYYY-MM-DD-NNN
+timestamp: ""                       # ISO 8601: YYYY-MM-DDTHH:MM:SSZ
+reported_by: "sham"
+
+# Classification
+project: ""                         # Free text — your project/product name
+agent: ""                           # Which specific agent or component
+platform: ""                        # AI tool/platform: claude-code | cursor | chatgpt | codex | copilot | custom
+severity: ""                        # cosmetic | functional | safety-critical
+
+# What happened
+failure_type: ""                    # hallucination | tool_misuse | scope_creep | safety_boundary_violation | performance_degradation | context_loss | confidence_miscalibration | instruction_drift | error_handling_failure | integration_failure | adversarial_vulnerability | other
+expected_behavior: |
+
+actual_behavior: |
+
+context: |
+
+
+# Resolution
+root_cause: ""
+immediate_fix: |
+
+systemic_takeaway: |
+
+
+# Metadata
+tags: []
+related_incidents: []
+playbook_entry: ""

@@ -1,0 +1,53 @@
+id: "2026-03-04-001"
+timestamp: "2026-03-04T12:00:00Z"
+reported_by: "sham"
+
+# Classification
+project: "mila"
+agent: "respond-node"
+platform: "claude-code"
+severity: "functional"
+
+# What happened
+failure_type: "error_handling_failure"
+expected_behavior: |
+  When PostgresSaver initialization fails (missing library or connection
+  error), the system should clearly notify the operator that session
+  persistence has degraded to in-memory only. Users should understand
+  their conversation history will not survive a restart.
+actual_behavior: |
+  PostgresSaver silently falls back to MemorySaver on failure. The only
+  evidence is a WARNING-level log line. Users continue interacting with
+  no indication that their sessions are ephemeral. They may share
+  sensitive information believing it's stored in a persistent,
+  tenant-isolated database when it's actually in volatile memory.
+context: |
+  Found in agent/graph.py (lines 116-125). The fallback chain catches
+  both ImportError and generic Exception, logging a warning but
+  providing zero user-facing feedback. This pattern exists alongside
+  a similar silent failure in Langfuse observability (agent/nodes/
+  respond.py lines 441-442) where trace update failures are swallowed
+  at WARNING level.
+
+# Resolution
+root_cause: "silent_degradation_pattern"
+immediate_fix: |
+  Not yet applied. Recommended: add a startup health check that
+  verifies PostgresSaver is active and logs at ERROR level if fallback
+  is triggered. Surface a system message in the chat UI indicating
+  degraded persistence mode.
+systemic_takeaway: |
+  Silent fallbacks are a recurring anti-pattern across USMI projects.
+  When a system degrades gracefully, operators must still know it
+  happened. "Graceful" should mean "continues working AND tells
+  someone," not "continues working AND hides the problem." This
+  pattern should become a Forge playbook entry.
+
+# Metadata
+tags:
+  - "silent-fallback"
+  - "observability-gap"
+  - "session-persistence"
+  - "multi-tenancy"
+related_incidents: []
+playbook_entry: "silent-fallback"

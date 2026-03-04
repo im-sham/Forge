@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "forge": {
+      "command": "/Users/shamimrehman/Projects/USMI/forge/.venv/bin/python3",
+      "args": ["-m", "forge_cli.mcp_server"],
+      "cwd": "/Users/shamimrehman/Projects/USMI/forge"
+    }
+  }
+}

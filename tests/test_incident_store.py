@@ -1,0 +1,129 @@
+from datetime import date
+from pathlib import Path
+
+from forge_cli.incident_store import (
+    find_incident,
+    generate_id,
+    list_incidents,
+    load_incident,
+    save_incident,
+)
+from forge_cli.models import Incident
+
+
+def test_generate_id_first_of_day(tmp_incidents_dir):
+    incident_id = generate_id(tmp_incidents_dir, date(2026, 3, 4))
+    assert incident_id == "2026-03-04-001"
+
+
+def test_generate_id_sequential(tmp_incidents_dir):
+    # Create month dir and a fake first incident
+    month_dir = tmp_incidents_dir / "2026-03"
+    month_dir.mkdir()
+    (month_dir / "2026-03-04-001.yml").write_text("id: '2026-03-04-001'")
+    (month_dir / "2026-03-04-002.yml").write_text("id: '2026-03-04-002'")
+
+    incident_id = generate_id(tmp_incidents_dir, date(2026, 3, 4))
+    assert incident_id == "2026-03-04-003"
+
+
+def test_save_and_load_roundtrip(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    filepath = save_incident(incident, tmp_incidents_dir)
+
+    assert filepath.exists()
+    assert filepath.name == "2026-03-04-001.yml"
+    assert filepath.parent.name == "2026-03"
+
+    loaded = load_incident(filepath)
+    assert loaded.id == incident.id
+    assert loaded.project == incident.project
+    assert loaded.platform == incident.platform
+    assert loaded.severity == incident.severity
+    assert loaded.failure_type == incident.failure_type
+    assert loaded.tags == incident.tags
+
+
+def test_save_creates_month_directory(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+    assert (tmp_incidents_dir / "2026-03").is_dir()
+
+
+def test_list_incidents_empty(tmp_incidents_dir):
+    result = list_incidents(tmp_incidents_dir)
+    assert result == []
+
+
+def test_list_incidents_with_filter(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+
+    # Match project
+    result = list_incidents(tmp_incidents_dir, project="mila")
+    assert len(result) == 1
+
+    # No match
+    result = list_incidents(tmp_incidents_dir, project="aegis")
+    assert len(result) == 0
+
+
+def test_list_incidents_severity_filter(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+
+    result = list_incidents(tmp_incidents_dir, severity="functional")
+    assert len(result) == 1
+
+    result = list_incidents(tmp_incidents_dir, severity="safety-critical")
+    assert len(result) == 0
+
+
+def test_yaml_multiline_block_style(tmp_incidents_dir):
+    data = {
+        "id": "2026-03-04-001",
+        "timestamp": "2026-03-04T14:30:00Z",
+        "reported_by": "sham",
+        "project": "mila",
+        "agent": "test",
+        "platform": "claude-code",
+        "severity": "functional",
+        "failure_type": "hallucination",
+        "expected_behavior": "Line one.\nLine two.",
+        "actual_behavior": "Single line.",
+        "context": "",
+        "root_cause": "",
+        "immediate_fix": "",
+        "systemic_takeaway": "",
+    }
+    incident = Incident.from_dict(data)
+    filepath = save_incident(incident, tmp_incidents_dir)
+
+    raw = filepath.read_text()
+    # Multiline field should use block scalar style (|- strips trailing newline)
+    assert "|-" in raw or "|\n" in raw
+    assert "Line one." in raw
+    assert "Line two." in raw
+
+
+def test_find_incident_exact(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+
+    found = find_incident(tmp_incidents_dir, "2026-03-04-001")
+    assert found is not None
+    assert found.id == "2026-03-04-001"
+
+
+def test_find_incident_suffix(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+
+    found = find_incident(tmp_incidents_dir, "001")
+    assert found is not None
+    assert found.id == "2026-03-04-001"
+
+
+def test_find_incident_not_found(tmp_incidents_dir):
+    found = find_incident(tmp_incidents_dir, "9999")
+    assert found is None
