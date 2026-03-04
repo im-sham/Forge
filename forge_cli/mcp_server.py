@@ -135,6 +135,7 @@ def forge_list(
     project: str = "",
     severity: str = "",
     since: str = "",
+    tag: str = "",
     limit: int = 10,
 ) -> str:
     """List forge incidents with optional filters.
@@ -143,6 +144,7 @@ def forge_list(
         project: Filter by project name (e.g., "mila", "aegis")
         severity: Filter by severity (cosmetic, functional, safety-critical)
         since: Filter by date, showing incidents from this date onward (YYYY-MM-DD)
+        tag: Filter by tag (e.g., "silent-fallback", "hallucination")
         limit: Maximum number of incidents to return (default 10)
     """
     cfg = load_config()
@@ -151,6 +153,7 @@ def forge_list(
         project=project or None,
         severity=severity or None,
         since=since or None,
+        tag=tag or None,
         limit=limit,
     )
 

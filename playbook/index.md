@@ -5,6 +5,7 @@ This is the living playbook of AI agent failure modes documented through USMI's 
 ## Entries
 
 - [Silent Fallback](silent-fallback.md) — System degrades without notifying the operator (incidents 001, 004)
+- [Error Propagation Hallucination](error-propagation-hallucination.md) — Unstructured error text causes LLM to hallucinate recovery actions (incident 002)
 
 ## How entries are created
 

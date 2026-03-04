@@ -2,6 +2,7 @@ from datetime import date
 
 from forge_cli.incident_store import (
     find_incident,
+    find_incident_path,
     generate_id,
     list_incidents,
     load_incident,
@@ -126,3 +127,29 @@ def test_find_incident_suffix(tmp_incidents_dir, sample_data):
 def test_find_incident_not_found(tmp_incidents_dir):
     found = find_incident(tmp_incidents_dir, "9999")
     assert found is None
+
+
+def test_find_incident_path_returns_path(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    saved = save_incident(incident, tmp_incidents_dir)
+
+    path = find_incident_path(tmp_incidents_dir, "2026-03-04-001")
+    assert path is not None
+    assert path == saved
+
+
+def test_find_incident_path_not_found(tmp_incidents_dir):
+    path = find_incident_path(tmp_incidents_dir, "9999")
+    assert path is None
+
+
+def test_list_incidents_tag_filter(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+
+    # sample_data has tags: ["hallucination", "long-document"]
+    result = list_incidents(tmp_incidents_dir, tag="hallucination")
+    assert len(result) == 1
+
+    result = list_incidents(tmp_incidents_dir, tag="nonexistent-tag")
+    assert len(result) == 0

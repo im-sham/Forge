@@ -25,9 +25,11 @@ from forge_cli.display import (
 )
 from forge_cli.incident_store import (
     find_incident,
+    find_incident_path,
     generate_id,
     get_all_incidents,
     list_incidents,
+    load_incident,
     save_incident,
 )
 from forge_cli.models import FailureType, Incident, Severity
@@ -185,6 +187,7 @@ def list_cmd(
     project: Optional[str] = typer.Option(None, "--project", "-p", help="Filter by project"),
     severity: Optional[str] = typer.Option(None, "--severity", "-s", help="Filter by severity"),
     since: Optional[str] = typer.Option(None, "--since", help="Filter by date (YYYY-MM-DD)"),
+    tag: Optional[str] = typer.Option(None, "--tag", "-T", help="Filter by tag"),
     limit: int = typer.Option(10, "--limit", "-n", help="Max incidents to show"),
 ) -> None:
     """List recent incidents with optional filters."""
@@ -199,6 +202,7 @@ def list_cmd(
         project=project,
         severity=severity,
         since=since,
+        tag=tag,
         limit=limit,
     )
 
@@ -222,6 +226,43 @@ def show(
         raise typer.Exit(1)
 
     display_incident_detail(incident)
+
+
+@app.command()
+def edit(
+    incident_id: str = typer.Argument(help="Incident ID (e.g., '2026-03-04-001' or '001')"),
+) -> None:
+    """Open an incident in $EDITOR for modification."""
+    try:
+        cfg = load_config()
+    except FileNotFoundError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+    path = find_incident_path(cfg.incidents_dir, incident_id)
+    if path is None:
+        print_error(f"No incident found matching '{incident_id}'.")
+        raise typer.Exit(1)
+
+    editor = os.environ.get("EDITOR", "vi")
+    console.print(f"[bold]Opening {path.name} in {editor}...[/bold]")
+
+    try:
+        subprocess.run([editor, str(path)], check=True)
+    except subprocess.CalledProcessError:
+        print_error("Editor exited with an error.")
+        raise typer.Exit(1)
+
+    # Validate the edited file still parses
+    try:
+        updated = load_incident(path)
+    except Exception as e:
+        print_error(f"Edited file has invalid YAML: {e}")
+        print_info(f"File is at: {path}")
+        raise typer.Exit(1)
+
+    display_incident_detail(updated)
+    print_success(f"Updated: {path}")
 
 
 @app.command()

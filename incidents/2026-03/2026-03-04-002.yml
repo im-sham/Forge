@@ -55,4 +55,4 @@ tags:
   - "confidence-miscalibration"
 related_incidents:
   - "2026-03-04-001"
-playbook_entry: ""
+playbook_entry: "error-propagation-hallucination"

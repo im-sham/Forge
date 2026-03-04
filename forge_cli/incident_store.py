@@ -84,6 +84,7 @@ def list_incidents(
     project: str | None = None,
     severity: str | None = None,
     since: str | None = None,
+    tag: str | None = None,
     limit: int = 10,
 ) -> list[Incident]:
     """List incidents with optional filtering, most recent first."""
@@ -103,6 +104,8 @@ def list_incidents(
             continue
         if since and incident.timestamp < since:
             continue
+        if tag and tag not in incident.tags:
+            continue
 
         incidents.append(incident)
         if len(incidents) >= limit:
@@ -111,25 +114,31 @@ def list_incidents(
     return incidents
 
 
-def find_incident(incidents_dir: Path, incident_id: str) -> Incident | None:
-    """Find an incident by ID (exact or suffix match)."""
-    # Try exact match first: derive path from ID (e.g., 2026-03-04-001 -> 2026-03/2026-03-04-001.yml)
+def find_incident_path(incidents_dir: Path, incident_id: str) -> Path | None:
+    """Find the file path for an incident by ID (exact or suffix match)."""
     parts = incident_id.split("-")
     if len(parts) >= 3:
         month_prefix = f"{parts[0]}-{parts[1]}"
         exact_path = incidents_dir / month_prefix / f"{incident_id}.yml"
         if exact_path.exists():
-            return load_incident(exact_path)
+            return exact_path
 
-    # Fallback: search all files for suffix match (e.g., "001" matches "2026-03-04-001")
     for filepath in incidents_dir.rglob("*.yml"):
         if incident_id in filepath.stem:
-            try:
-                return load_incident(filepath)
-            except Exception:
-                continue
+            return filepath
 
     return None
+
+
+def find_incident(incidents_dir: Path, incident_id: str) -> Incident | None:
+    """Find an incident by ID (exact or suffix match)."""
+    path = find_incident_path(incidents_dir, incident_id)
+    if path is None:
+        return None
+    try:
+        return load_incident(path)
+    except Exception:
+        return None
 
 
 def get_all_incidents(incidents_dir: Path) -> list[Incident]:
