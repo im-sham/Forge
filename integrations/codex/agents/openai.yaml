@@ -1,0 +1,14 @@
+interface:
+  display_name: "Forge Incident Tracker"
+  short_description: "Track AI agent failure modes across projects"
+  brand_color: "#E85A25"
+
+policy:
+  allow_implicit_invocation: true
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "forge"
+      description: "Forge MCP server for AI agent failure mode tracking"
+      transport: "stdio"
