@@ -1,4 +1,4 @@
-default_reporter: "sham"
+default_reporter: "forge-user"
 
 analysis:
   provider: "anthropic"
@@ -7,11 +7,11 @@ analysis:
 
 # Suggested values shown during forge log (any value accepted)
 projects:
-  - mila
-  - scalescore
-  - aegis
-  - sentinel
-  - ghost-sentry
+  - support-agent
+  - research-assistant
+  - workflow-orchestrator
+  - governance-service
+  - sales-copilot
 
 platforms:
   - claude-code

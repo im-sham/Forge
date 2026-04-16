@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import typer
-import yaml
 from rich.console import Console
 from rich.panel import Panel
 from rich.status import Status
@@ -33,10 +32,16 @@ from forge_cli.incident_store import (
     save_incident,
 )
 from forge_cli.models import FailureType, Incident, Severity
+from forge_cli.analyzer import (
+    analyze_incidents,
+    next_analysis_output_path,
+    render_analysis_prompt,
+    serialize_incidents_for_analysis,
+)
 
 app = typer.Typer(
     name="forge",
-    help="USMI Labs — AI agent failure mode tracking and analysis",
+    help="Git-native incident tracking and pattern analysis for AI agents",
     no_args_is_help=True,
 )
 console = Console()
@@ -270,6 +275,11 @@ def analyze(
     since: Optional[str] = typer.Option(None, "--since", help="Analyze incidents since date"),
     full: bool = typer.Option(False, "--full", help="Re-analyze all incidents"),
     provider: Optional[str] = typer.Option(None, "--provider", help="LLM provider (anthropic|openai)"),
+    prepare_only: bool = typer.Option(
+        False,
+        "--prepare-only",
+        help="Save the rendered analysis input without calling an LLM",
+    ),
 ) -> None:
     """Run LLM pattern analysis on incidents."""
     try:
@@ -278,7 +288,6 @@ def analyze(
         print_error(str(e))
         raise typer.Exit(1)
 
-    from forge_cli.analyzer import analyze_incidents
     from forge_cli.providers import get_provider
 
     # Load incidents
@@ -298,13 +307,22 @@ def analyze(
         raise typer.Exit(1)
 
     prompt_template = prompt_path.read_text()
+    incidents_yaml = serialize_incidents_for_analysis(all_incidents)
+    rendered_prompt = render_analysis_prompt(prompt_template, incidents_yaml)
 
-    # Serialize incidents to YAML for the prompt
-    incidents_yaml = yaml.dump(
-        [i.to_dict() for i in all_incidents],
-        default_flow_style=False,
-        allow_unicode=True,
-    )
+    report_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if prepare_only:
+        prompt_path = next_analysis_output_path(
+            cfg.analysis_dir,
+            date_prefix=report_date,
+            label="analysis-input",
+        )
+        prompt_path.write_text(rendered_prompt)
+        print_success(f"Analysis input saved: {prompt_path}")
+        print_info(
+            f"Prepared {len(all_incidents)} incident(s) from {cfg.incidents_dir} for manual review or paste into Claude/Codex."
+        )
+        raise typer.Exit(0)
 
     # Resolve provider
     provider_name = provider or cfg.analysis_provider
@@ -329,17 +347,7 @@ def analyze(
             raise typer.Exit(1)
 
     # Save report
-    cfg.analysis_dir.mkdir(parents=True, exist_ok=True)
-    report_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    report_path = cfg.analysis_dir / f"{report_date}-analysis.md"
-
-    # Avoid overwriting — append sequence if needed
-    if report_path.exists():
-        seq = 2
-        while report_path.exists():
-            report_path = cfg.analysis_dir / f"{report_date}-analysis-{seq}.md"
-            seq += 1
-
+    report_path = next_analysis_output_path(cfg.analysis_dir, date_prefix=report_date)
     report_path.write_text(report)
     print_success(f"Analysis saved: {report_path}")
 

@@ -4,26 +4,36 @@ Connect Forge to OpenAI Codex CLI so incidents can be logged from Codex sessions
 
 ## Setup
 
-### 1. Add Forge MCP server to Codex config
+### 1. Install Forge and MCP dependencies
+
+```bash
+git clone https://github.com/im-sham/Forge.git
+cd Forge
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[mcp]"
+```
+
+### 2. Add Forge MCP server to Codex config
 
 Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.forge]
-command = "/Users/shamimrehman/Projects/USMI/forge/.venv/bin/python3"
+command = "/absolute/path/to/Forge/.venv/bin/python3"
 args = ["-m", "forge_cli.mcp_server"]
-cwd = "/Users/shamimrehman/Projects/USMI/forge"
+cwd = "/absolute/path/to/Forge"
 ```
 
 This makes `forge_log`, `forge_list`, `forge_show`, `forge_stats`, `forge_playbook_list`, `forge_playbook_show`, and `forge_schema` available as tools in every Codex session.
 
-### 2. Install the Forge skill
+### 3. Install the Forge skill
 
 Copy (or symlink) the skill directory into your Codex skills location:
 
 ```bash
 # Option A: Symlink
-ln -s /Users/shamimrehman/Projects/USMI/forge/integrations/codex \
+ln -s /absolute/path/to/Forge/integrations/codex \
       ~/.codex/skills/forge-incident-tracker
 
 # Option B: Register in config.toml
@@ -33,11 +43,11 @@ Add to `~/.codex/config.toml`:
 
 ```toml
 [[skills.config]]
-path = "/Users/shamimrehman/Projects/USMI/forge/integrations/codex/SKILL.md"
+path = "/absolute/path/to/Forge/integrations/codex/SKILL.md"
 enabled = true
 ```
 
-### 3. Verify
+### 4. Verify
 
 Start a Codex session and try:
 
@@ -52,7 +62,7 @@ Or just describe a failure — the skill's implicit invocation will activate whe
 ```
 ┌─────────────┐     ┌──────────────┐     ┌──────────────┐
 │  Codex CLI   │────▶│  Forge MCP   │────▶│  YAML files  │
-│  (platform:  │     │  Server      │     │  in git repo │
+│  (platform:  │     │  Server      │     │  in data root│
 │   codex)     │     │  (stdio)     │     │              │
 └─────────────┘     └──────────────┘     └──────────────┘
                                                 │
@@ -65,12 +75,12 @@ Or just describe a failure — the skill's implicit invocation will activate whe
 └─────────────┘     └──────────────┘
 ```
 
-Both tools write to the same `incidents/` directory. `forge stats` aggregates across all platforms. The `platform` field distinguishes where each incident was captured.
+Both tools write to the same configured Forge data root. `forge stats` aggregates across all platforms. The `platform` field distinguishes where each incident was captured.
 
 ## Usage from Codex
 
 **Log an incident:**
-> "Log a forge incident: the mila respond-node hallucinated an API endpoint"
+> "Log a forge incident: the support-agent hallucinated an API endpoint"
 
 **Check stats:**
 > "Show me forge stats"

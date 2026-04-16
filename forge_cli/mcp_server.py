@@ -74,7 +74,7 @@ def forge_log(
     """Log a new forge incident. Creates a YAML file in the incidents directory.
 
     Args:
-        project: Project name (e.g., "mila", "aegis", "scalescore")
+        project: Project name (e.g., "support-agent", "governance-service")
         agent: Agent or component that failed (e.g., "respond-node", "mcp-server")
         severity: Severity level — must be one of: cosmetic, functional, safety-critical
         failure_type: Failure category — must be one of: hallucination, tool_misuse, scope_creep, safety_boundary_violation, performance_degradation, context_loss, confidence_miscalibration, instruction_drift, error_handling_failure, integration_failure, adversarial_vulnerability, other
@@ -141,7 +141,7 @@ def forge_list(
     """List forge incidents with optional filters.
 
     Args:
-        project: Filter by project name (e.g., "mila", "aegis")
+        project: Filter by project name (e.g., "support-agent", "governance-service")
         severity: Filter by severity (cosmetic, functional, safety-critical)
         since: Filter by date, showing incidents from this date onward (YYYY-MM-DD)
         tag: Filter by tag (e.g., "silent-fallback", "hallucination")

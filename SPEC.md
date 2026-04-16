@@ -1,5 +1,9 @@
-# USMI Labs — Forge System Spec
+# Forge System Spec
 ## Failure Modes & Learnings System
+
+> Historical note: this is Forge's original internal design specification from March 2026.
+> The current public setup and usage guidance lives in `README.md`. Some examples below
+> still reference early USMI project names because they reflect Forge's first deployment context.
 
 **Created:** March 2, 2026
 **Status:** Ready to build v0

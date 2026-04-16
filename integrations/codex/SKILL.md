@@ -46,7 +46,7 @@ Recommended fields: `platform`, `context`, `root_cause`, `tags`
 Example:
 ```
 forge_log(
-  project="mila",
+  project="support-agent",
   agent="respond-node",
   severity="functional",
   failure_type="hallucination",

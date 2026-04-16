@@ -1,139 +1,196 @@
 # Forge
 
-AI agent failure mode tracking and analysis. Git-native, platform-agnostic, model-agnostic.
+Git-native incident tracking and pattern analysis for AI agents.
 
-Built by [USMI Labs](https://usmachineintelligence.com).
+Forge helps teams capture agent failures as structured YAML incidents, analyze recurring patterns, and build institutional memory across tools, teams, and providers.
 
-## What it does
+Built by [USMI Labs](https://usmi.ai).
 
-Forge captures AI agent failures as structured YAML incidents, analyzes patterns across projects, and builds a playbook of recurring failure modes. Works with any AI tool (Claude, Cursor, ChatGPT, Codex, custom agents) and any LLM provider for analysis (Anthropic, OpenAI).
+## Why Forge
 
-## Quick start
+- Local-first incident tracking in plain YAML
+- Works across Claude, Codex, Cursor, ChatGPT, Copilot, and custom agents
+- CLI for logging, browsing, and analysis
+- MCP server for agent-native workflows
+- Supports private data roots outside the code repo
+- Keeps schemas and tooling reusable even when incident data stays private
+
+## Install
 
 ```bash
-# Clone and install
 git clone https://github.com/im-sham/Forge.git
 cd Forge
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev,mcp]"
+```
 
-# Log an incident
+## Quick Start
+
+```bash
+# Log an incident interactively
 forge log
 
 # List recent incidents
 forge list
 
-# View full details
-forge show 2026-03-04-001
+# Inspect one incident from the list
+forge show <incident-id>
 
-# Stats dashboard
+# Review aggregate patterns
 forge stats
 
-# View playbook
-forge playbook
-forge playbook show silent-fallback
+# Prepare a rendered analysis prompt without calling an LLM
+forge analyze --prepare-only
 ```
 
-## CLI commands
+## Public Code, Private Data
+
+Forge is designed so the code can be public while your live incident corpus stays private.
+
+The repo ships with empty `incidents/`, `playbook/`, and `analysis/` directories by default. For real usage, point Forge at an external data root:
+
+```bash
+cp config.local.example.yaml config.local.yaml
+```
+
+```yaml
+data_root: "~/Library/Application Support/Forge/default"
+```
+
+Or set:
+
+```bash
+export FORGE_DATA_ROOT="$HOME/Library/Application Support/Forge/default"
+```
+
+Forge will read `incidents/`, `playbook/`, and `analysis/` from that external path while keeping templates, code, tests, and integrations in the repo.
+
+## CLI Commands
 
 | Command | Description |
 |---------|-------------|
-| `forge log` | Log a new incident (interactive prompts) |
-| `forge list` | List incidents with `--project`, `--severity`, `--since`, `--limit` filters |
-| `forge show <id>` | Full details of one incident (supports suffix match: `forge show 001`) |
-| `forge stats` | Aggregate stats by severity, type, project, platform, tags |
+| `forge log` | Log a new incident with interactive prompts |
+| `forge list` | List incidents with `--project`, `--severity`, `--since`, `--tag`, and `--limit` filters |
+| `forge show <id>` | Show full details of one incident; suffix matches like `forge show 001` work |
+| `forge edit <id>` | Open an incident in your editor |
+| `forge stats` | Show aggregate counts by severity, type, project, platform, and tags |
 | `forge playbook` | List playbook entries |
-| `forge playbook show <name>` | Show a specific playbook entry (partial match supported) |
-| `forge analyze` | Run LLM pattern analysis (requires API key) |
+| `forge playbook show <name>` | Show one playbook entry |
+| `forge analyze` | Run LLM-backed pattern analysis |
+| `forge analyze --prepare-only` | Save the fully rendered analysis input without calling an LLM |
 
-## MCP server
+## MCP Server
 
-Forge exposes 7 tools via the [Model Context Protocol](https://modelcontextprotocol.io) for use from Claude Code, Claude Desktop, or any MCP client.
+Forge exposes tools over the [Model Context Protocol](https://modelcontextprotocol.io) so agent tools can log and query incidents directly.
 
-**Tools:** `forge_log`, `forge_list`, `forge_show`, `forge_stats`, `forge_playbook_list`, `forge_playbook_show`, `forge_schema`
+Available tools:
+
+- `forge_log`
+- `forge_list`
+- `forge_show`
+- `forge_stats`
+- `forge_playbook_list`
+- `forge_playbook_show`
+- `forge_schema`
 
 ### Claude Code
 
-The `.mcp.json` in the repo auto-configures the server. Just open a Claude Code session in the forge directory.
+The repo includes a generic `.mcp.json`. After installing dependencies, open the repo in Claude Code and the Forge server can be auto-discovered from the workspace.
 
 ### Claude Desktop
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+Add an MCP server entry like this:
 
 ```json
 {
   "mcpServers": {
     "forge": {
-      "command": "/path/to/forge/.venv/bin/python3",
+      "command": "/absolute/path/to/Forge/.venv/bin/python3",
       "args": ["-m", "forge_cli.mcp_server"],
-      "cwd": "/path/to/forge"
+      "cwd": "/absolute/path/to/Forge"
     }
   }
 }
 ```
 
-## Incident schema
+### Codex
 
-Each incident is a YAML file in `incidents/YYYY-MM/` with 17 structured fields:
+See [integrations/codex/README.md](integrations/codex/README.md) for Codex setup and the Forge skill.
 
-- **Classification:** project, agent, platform, severity, failure_type
-- **What happened:** expected_behavior, actual_behavior, context
-- **Resolution:** root_cause, immediate_fix, systemic_takeaway
-- **Metadata:** tags, related_incidents, playbook_entry
+## Incident Schema
 
-### Severity levels
+Each incident is a YAML file in `incidents/YYYY-MM/` with structured fields covering:
+
+- classification: `project`, `agent`, `platform`, `severity`, `failure_type`
+- event details: `expected_behavior`, `actual_behavior`, `context`
+- resolution: `root_cause`, `immediate_fix`, `systemic_takeaway`
+- metadata: `tags`, `related_incidents`, `playbook_entry`
+
+### Severity Levels
 
 | Level | Meaning |
 |-------|---------|
-| `cosmetic` | Wrong formatting, minor UX issue |
-| `functional` | Wrong output, failed task, broken workflow |
-| `safety-critical` | Harmful output, data leak, unauthorized action |
+| `cosmetic` | Minor formatting or UX issue |
+| `functional` | Wrong output, broken workflow, or failed task |
+| `safety-critical` | Harmful output, data leak, or unauthorized action |
 
-### Failure types
+### Failure Types
 
 `hallucination`, `tool_misuse`, `scope_creep`, `safety_boundary_violation`, `performance_degradation`, `context_loss`, `confidence_miscalibration`, `instruction_drift`, `error_handling_failure`, `integration_failure`, `adversarial_vulnerability`, `other`
 
-## Analysis
+## Analysis Modes
 
-Forge supports two analysis modes:
-
-**API-based:** `forge analyze` sends incidents to an LLM for pattern analysis. Supports `--provider anthropic|openai`.
+### API-backed analysis
 
 ```bash
-# Install provider SDK
-pip install -e ".[anthropic]"  # or .[openai]
-
-# Set API key
+pip install -e ".[anthropic]"   # or .[openai]
 export ANTHROPIC_API_KEY=sk-...
-
-# Run analysis
 forge analyze
 ```
 
-**Claude Code slash command:** Use `/forge-analyze` in Claude Code for API-free analysis within the conversation.
+### Prepare-only analysis
 
-## Project structure
+If you want to inspect or paste the analysis input into another tool yourself:
 
+```bash
+forge analyze --prepare-only
 ```
+
+This writes a dated `analysis-input` file into the active Forge data root.
+
+## Development
+
+```bash
+pip install -e ".[dev,mcp]"
+ruff check forge_cli/ tests/
+pytest tests/ -v
+```
+
+## Project Structure
+
+```text
 forge/
-├── forge_cli/           # Python package
-│   ├── cli.py           # Typer CLI (log, list, show, analyze, stats, playbook)
-│   ├── mcp_server.py    # MCP server (7 tools)
-│   ├── models.py        # Incident dataclass, enums, field ordering
-│   ├── config.py        # Config loading, project root discovery
-│   ├── incident_store.py # YAML file I/O, ID generation, filtering
-│   ├── display.py       # Rich formatting (tables, panels, stats)
-│   ├── analyzer.py      # LLM analysis orchestration
-│   └── providers.py     # LLM provider protocol (Anthropic, OpenAI)
-├── incidents/           # YAML incident files by month
-├── playbook/            # Markdown playbook entries
-├── analysis/            # LLM-generated pattern reports
-├── templates/           # Incident template, analysis prompt
-├── tests/               # 25 pytest tests
-├── config.yaml          # Project configuration
-└── SPEC.md              # Original design specification
+├── forge_cli/
+├── integrations/
+├── templates/
+├── incidents/          # empty by default; live data can stay external
+├── playbook/           # empty by default; live data can stay external
+├── analysis/           # empty by default; live data can stay external
+├── tests/
+├── .github/workflows/
+├── config.yaml
+├── config.local.example.yaml
+└── SPEC.md
 ```
+
+## Documentation
+
+- [SPEC.md](SPEC.md) - original design specification
+- [integrations/codex/README.md](integrations/codex/README.md) - Codex setup
+- [CONTRIBUTING.md](CONTRIBUTING.md) - contribution workflow
+- [SECURITY.md](SECURITY.md) - security reporting
 
 ## License
 
-Internal USMI Labs project. See [SPEC.md](SPEC.md) for design specification and roadmap.
+Apache-2.0. See [LICENSE](LICENSE).
