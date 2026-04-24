@@ -242,6 +242,7 @@ forge/
 ## Documentation
 
 - [SPEC.md](SPEC.md) - original design specification
+- [CONTRACTS.md](CONTRACTS.md) - Forge shared-contract ownership and pointer rules
 - [integrations/codex/README.md](integrations/codex/README.md) - Codex setup
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contribution workflow
 - [SECURITY.md](SECURITY.md) - security reporting
