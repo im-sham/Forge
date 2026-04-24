@@ -308,7 +308,11 @@ def analyze(
 
     prompt_template = prompt_path.read_text()
     incidents_yaml = serialize_incidents_for_analysis(all_incidents)
-    rendered_prompt = render_analysis_prompt(prompt_template, incidents_yaml)
+    rendered_prompt = render_analysis_prompt(
+        prompt_template,
+        incidents_yaml,
+        organization_name=cfg.organization_name,
+    )
 
     report_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if prepare_only:
@@ -320,7 +324,7 @@ def analyze(
         prompt_path.write_text(rendered_prompt)
         print_success(f"Analysis input saved: {prompt_path}")
         print_info(
-            f"Prepared {len(all_incidents)} incident(s) from {cfg.incidents_dir} for manual review or paste into Claude/Codex."
+            f"Prepared {len(all_incidents)} incident(s) from {cfg.incidents_dir} for manual review or use with your preferred LLM."
         )
         raise typer.Exit(0)
 
@@ -341,6 +345,7 @@ def analyze(
                 prompt_template=prompt_template,
                 provider=llm,
                 max_tokens=cfg.analysis_max_tokens,
+                organization_name=cfg.organization_name,
             )
         except Exception as e:
             print_error(f"Analysis failed: {e}")
@@ -465,3 +470,68 @@ def playbook_show(
 
     content = target.read_text()
     console.print(Panel(content, title=target.stem.replace("-", " ").title(), border_style="cyan"))
+
+
+# --- MCP subcommand ---
+
+mcp_app = typer.Typer(
+    name="mcp",
+    help="Run Forge over MCP transports",
+)
+app.add_typer(mcp_app, name="mcp")
+
+
+@mcp_app.command("serve")
+def mcp_serve(
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        help="Bind host. Defaults to loopback for local-only access.",
+    ),
+    port: int = typer.Option(
+        8765,
+        "--port",
+        help="Bind port for the Streamable HTTP server.",
+    ),
+    allow_remote: bool = typer.Option(
+        False,
+        "--allow-remote",
+        help="Allow binding to a non-loopback host on a trusted network.",
+    ),
+    disable_dns_rebinding_protection: bool = typer.Option(
+        False,
+        "--disable-dns-rebinding-protection",
+        help="Disable DNS rebinding protection for trusted private-network deployments.",
+    ),
+) -> None:
+    """Serve Forge over MCP Streamable HTTP."""
+    try:
+        from forge_cli.mcp_http import (
+            MCPHTTPServerOptions,
+            serve_mcp_http,
+            validate_server_options,
+        )
+    except ImportError as e:
+        print_error(
+            f"{e}. Install MCP server dependencies with `pip install -e \".[mcp]\"`."
+        )
+        raise typer.Exit(1)
+
+    options = MCPHTTPServerOptions(
+        host=host,
+        port=port,
+        allow_remote=allow_remote,
+        disable_dns_rebinding_protection=disable_dns_rebinding_protection,
+    )
+
+    try:
+        validate_server_options(options)
+        if disable_dns_rebinding_protection:
+            print_info(
+                "DNS rebinding protection is disabled. Only do this on a network you explicitly trust."
+            )
+        print_info(f"Starting Forge MCP HTTP server on http://{host}:{port}/mcp")
+        serve_mcp_http(options)
+    except ValueError as e:
+        print_error(str(e))
+        raise typer.Exit(1)

@@ -1,4 +1,5 @@
 default_reporter: "forge-user"
+organization_name: "your organization"
 
 analysis:
   provider: "anthropic"

@@ -19,12 +19,18 @@ def serialize_incidents_for_analysis(incidents: list[Incident]) -> str:
     )
 
 
-def render_analysis_prompt(prompt_template: str, incidents_yaml: str) -> str:
-    """Insert serialized incident data into the analysis prompt template."""
-    return prompt_template.replace(
+def render_analysis_prompt(
+    prompt_template: str,
+    incidents_yaml: str,
+    *,
+    organization_name: str = "your organization",
+) -> str:
+    """Insert serialized incident data and organization context into the analysis prompt."""
+    prompt = prompt_template.replace(
         "[INCIDENTS ARE INSERTED HERE AS YAML]",
         incidents_yaml,
     )
+    return prompt.replace("[ORGANIZATION NAME]", organization_name)
 
 
 def next_analysis_output_path(
@@ -56,8 +62,13 @@ def analyze_incidents(
     prompt_template: str,
     provider: LLMProvider,
     max_tokens: int = 4096,
+    organization_name: str = "your organization",
 ) -> str:
     """Send incidents to an LLM for pattern analysis. Returns markdown report."""
-    prompt = render_analysis_prompt(prompt_template, incidents_yaml)
+    prompt = render_analysis_prompt(
+        prompt_template,
+        incidents_yaml,
+        organization_name=organization_name,
+    )
 
     return provider.complete(prompt, max_tokens)

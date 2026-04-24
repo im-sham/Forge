@@ -12,6 +12,7 @@ class ForgeConfig:
     root: Path
     data_root: Path | None = None
     default_reporter: str = "forge-user"
+    organization_name: str = "your organization"
     analysis_provider: str = "anthropic"
     analysis_model: str = "claude-sonnet-4-20250514"
     analysis_max_tokens: int = 4096
@@ -73,6 +74,7 @@ def _apply_config_values(config: ForgeConfig, data: dict) -> ForgeConfig:
             config.data_root = (config.root / config.data_root).resolve()
 
     config.default_reporter = data.get("default_reporter", config.default_reporter)
+    config.organization_name = data.get("organization_name", config.organization_name)
     config.projects = data.get("projects", config.projects)
     config.platforms = data.get("platforms", config.platforms)
 

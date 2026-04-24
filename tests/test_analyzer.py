@@ -21,14 +21,21 @@ def test_serialize_incidents_for_analysis_preserves_field_order(sample_data):
 
 
 def test_render_analysis_prompt_substitutes_incident_yaml():
-    prompt_template = "Header\n\n[INCIDENTS ARE INSERTED HERE AS YAML]\n\nFooter"
+    prompt_template = (
+        "Header for [ORGANIZATION NAME]\n\n[INCIDENTS ARE INSERTED HERE AS YAML]\n\nFooter"
+    )
     incidents_yaml = "- id: 2026-03-04-001\n  project: mila\n"
 
-    rendered = render_analysis_prompt(prompt_template, incidents_yaml)
+    rendered = render_analysis_prompt(
+        prompt_template,
+        incidents_yaml,
+        organization_name="Acme Ops",
+    )
 
     assert "[INCIDENTS ARE INSERTED HERE AS YAML]" not in rendered
+    assert "[ORGANIZATION NAME]" not in rendered
     assert incidents_yaml in rendered
-    assert rendered.startswith("Header")
+    assert rendered.startswith("Header for Acme Ops")
     assert rendered.endswith("Footer")
 
 

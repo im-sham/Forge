@@ -66,6 +66,8 @@ export FORGE_DATA_ROOT="$HOME/Library/Application Support/Forge/default"
 
 Forge will read `incidents/`, `playbook/`, and `analysis/` from that external path while keeping templates, code, tests, and integrations in the repo.
 
+You can also set an `organization_name` in `config.yaml` or `config.local.yaml` to personalize analysis prompts and generated analysis-input files.
+
 ## CLI Commands
 
 | Command | Description |
@@ -79,6 +81,7 @@ Forge will read `incidents/`, `playbook/`, and `analysis/` from that external pa
 | `forge playbook show <name>` | Show one playbook entry |
 | `forge analyze` | Run LLM-backed pattern analysis |
 | `forge analyze --prepare-only` | Save the fully rendered analysis input without calling an LLM |
+| `forge mcp serve` | Run Forge as a Streamable HTTP MCP server with local-only defaults |
 
 ## MCP Server
 
@@ -93,6 +96,10 @@ Available tools:
 - `forge_playbook_list`
 - `forge_playbook_show`
 - `forge_schema`
+
+### Local stdio MCP
+
+Use stdio when the MCP client runs on the same machine as Forge.
 
 ### Claude Code
 
@@ -117,6 +124,30 @@ Add an MCP server entry like this:
 ### Codex
 
 See [integrations/codex/README.md](integrations/codex/README.md) for Codex setup and the Forge skill.
+
+### Streamable HTTP MCP
+
+Use HTTP when a remote agent or another machine needs to talk to Forge over MCP.
+
+Local-only default:
+
+```bash
+forge mcp serve
+```
+
+This starts Forge on `http://127.0.0.1:8765/mcp` with DNS rebinding protection enabled.
+
+Trusted private-network example:
+
+```bash
+forge mcp serve \
+  --host 0.0.0.0 \
+  --port 8765 \
+  --allow-remote \
+  --disable-dns-rebinding-protection
+```
+
+The remote bind flags are intentionally explicit. They are meant for trusted private-network setups such as Tailscale, not for public internet exposure.
 
 ## Incident Schema
 
