@@ -34,6 +34,9 @@ Please do not commit:
 - real incident corpora
 - internal analysis outputs
 - customer data
+- regulated personal data
+- training/eval source material
+- rights, redaction, use-approval, or export manifests copied from Governance
 - local `config.local.yaml` files
 - machine-specific settings
 

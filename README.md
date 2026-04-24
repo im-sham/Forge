@@ -6,6 +6,19 @@ Forge helps teams capture agent failures as structured YAML incidents, analyze r
 
 Built by [USMI Labs](https://usmi.ai).
 
+## Proofhouse Suite Boundary
+
+Inside Proofhouse, Forge is the incident-memory and failure-pattern learning layer.
+
+| Capability | Boundary |
+|------------|----------|
+| Workflow Context | Owns canonical workflow truth, traces, source evidence, and operational context |
+| Readiness | Owns readiness scoring, trust-gap diagnosis, remediation priorities, and Operational Learning suitability |
+| Governance | Owns rights, redaction review, use approvals, export control, manifests, and audit-grade evidence |
+| Forge | Owns incident records, recurring failure patterns, playbooks, and incident-memory feedback |
+
+Forge can reference Workflow Context, Readiness, and Governance records by pointer, but it should not copy their canonical state. Forge does not approve Operational Learning use, derive eval or training assets, own rights decisions, or act as the workflow source of truth.
+
 ## Why Forge
 
 - Local-first incident tracking in plain YAML
@@ -157,6 +170,17 @@ Each incident is a YAML file in `incidents/YYYY-MM/` with structured fields cove
 - event details: `expected_behavior`, `actual_behavior`, `context`
 - resolution: `root_cause`, `immediate_fix`, `systemic_takeaway`
 - metadata: `tags`, `related_incidents`, `playbook_entry`
+
+### Proofhouse Pointer Convention
+
+When an incident relates to Proofhouse workflow evidence or Operational Learning, keep Forge records pointer-based:
+
+- use `context` for short human-readable references
+- use `tags` for capability markers such as `workflow-context`, `readiness`, `governance`, `operational-learning`, `redaction`, or `use-approval`
+- use `related_incidents` only for Forge incident IDs
+- do not paste raw customer data, regulated personal data, credentials, or training/eval source material into an incident
+
+Governance remains the approval and export-control plane. Forge may record that a handoff or approval issue occurred, but the authoritative rights, redaction, use-approval, manifest, and export state lives outside Forge.
 
 ### Severity Levels
 

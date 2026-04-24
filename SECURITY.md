@@ -22,3 +22,9 @@ We will aim to:
 - coordinate a fix and disclosure plan when appropriate
 
 Please avoid publicly disclosing the issue until there is a coordinated response.
+
+## Data Boundary
+
+Forge incident records should be sanitized by default. Do not store raw customer data, regulated personal data, credentials, or training/eval source material in Forge incidents, playbooks, or analysis outputs.
+
+For Proofhouse Operational Learning issues, record pointers and summaries only. Governance remains the authoritative plane for rights posture, redaction review, use approvals, export eligibility, manifests, and audit evidence.

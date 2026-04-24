@@ -4,6 +4,9 @@
 > Historical note: this is Forge's original internal design specification from March 2026.
 > The current public setup and usage guidance lives in `README.md`. Some examples below
 > still reference early USMI project names because they reflect Forge's first deployment context.
+> Current Proofhouse boundary: Forge owns incident memory and failure-pattern learning only.
+> Workflow truth, readiness scoring, governance approvals, rights, redaction, export manifests,
+> and Operational Learning asset derivation live outside Forge.
 
 **Created:** March 2, 2026
 **Status:** Ready to build v0

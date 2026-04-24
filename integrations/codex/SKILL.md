@@ -12,6 +12,8 @@ description: >
 You have access to the Forge failure mode tracking system via MCP tools. Use these tools
 to log and query AI agent incidents.
 
+Forge owns incident memory and recurring failure-pattern learning. It does not own Workflow Context truth, Readiness scoring, Governance approval state, rights decisions, redaction review, export eligibility, or training/eval asset derivation.
+
 ## Available MCP Tools
 
 - `forge_log` — Log a new incident (creates a YAML file)
@@ -43,6 +45,8 @@ Required fields: `project`, `agent`, `severity`, `failure_type`, `expected_behav
 
 Recommended fields: `platform`, `context`, `root_cause`, `tags`
 
+When logging Proofhouse-related incidents, use pointer-style context and tags instead of copying sensitive source material. Suitable tags include `workflow-context`, `readiness`, `governance`, `operational-learning`, `redaction`, and `use-approval`. Do not paste raw customer data, regulated personal data, credentials, or training/eval source material into Forge.
+
 Example:
 ```
 forge_log(
@@ -67,3 +71,4 @@ patterns across their incidents. When showing results, highlight:
 - Safety-critical incidents that need attention
 - Related incidents that form a pattern
 - Playbook entries that offer prevention guidance
+- Which owning capability should receive the handoff when the issue involves Workflow Context, Readiness, Governance, or Forge itself
