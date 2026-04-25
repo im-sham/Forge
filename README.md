@@ -50,6 +50,9 @@ forge list
 # Inspect one incident from the list
 forge show <incident-id>
 
+# Print the Proofhouse IncidentRef projection for an incident
+forge ref <incident-id>
+
 # Review aggregate patterns
 forge stats
 
@@ -88,6 +91,7 @@ You can also set an `organization_name` in `config.yaml` or `config.local.yaml` 
 | `forge log` | Log a new incident with interactive prompts |
 | `forge list` | List incidents with `--project`, `--severity`, `--since`, `--tag`, and `--limit` filters |
 | `forge show <id>` | Show full details of one incident; suffix matches like `forge show 001` work |
+| `forge ref <id>` | Print a Proofhouse `IncidentRef` compatibility projection as JSON |
 | `forge edit <id>` | Open an incident in your editor |
 | `forge stats` | Show aggregate counts by severity, type, project, platform, and tags |
 | `forge playbook` | List playbook entries |
@@ -105,6 +109,7 @@ Available tools:
 - `forge_log`
 - `forge_list`
 - `forge_show`
+- `forge_incident_ref`
 - `forge_stats`
 - `forge_playbook_list`
 - `forge_playbook_show`
@@ -181,6 +186,8 @@ When an incident relates to Proofhouse workflow evidence or Operational Learning
 - do not paste raw customer data, regulated personal data, credentials, or training/eval source material into an incident
 
 Governance remains the approval and export-control plane. Forge may record that a handoff or approval issue occurred, but the authoritative rights, redaction, use-approval, manifest, and export state lives outside Forge.
+
+Forge emits a Proofhouse V0.1 `IncidentRef` projection through `forge ref <id>` and the `forge_incident_ref` MCP tool. This projection is generated from the current YAML fields and does not change the saved incident format. Until Forge stores structured tenant metadata, the projection uses `organization_id: "unscoped"` and `environment_id: "default"` to avoid implying that `project` is a tenant boundary.
 
 ### Severity Levels
 

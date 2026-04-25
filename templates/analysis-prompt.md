@@ -8,6 +8,8 @@ If incidents mention Proofhouse capabilities, preserve source-of-truth boundarie
 
 Do not infer that an incident record grants approval for internal eval, internal training, or export use. Treat such issues as Governance handoffs unless an explicit approval reference is present.
 
+If a Forge `IncidentRef` projection is present or requested, treat it as a compact pointer and summary only. Do not infer missing Workflow Context, Readiness, Governance, or Operational Learning state from Forge tags.
+
 ## Incident Data
 
 [INCIDENTS ARE INSERTED HERE AS YAML]

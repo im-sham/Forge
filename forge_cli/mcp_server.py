@@ -16,7 +16,7 @@ from forge_cli.incident_store import (
     list_incidents,
     save_incident,
 )
-from forge_cli.models import FailureType, Incident, Severity
+from forge_cli.models import FailureType, Incident, PROOFHOUSE_REF_FIELDS, Severity
 
 mcp = FastMCP("Forge", json_response=True)
 
@@ -187,6 +187,22 @@ def forge_show(incident_id: str) -> str:
 
 
 @mcp.tool()
+def forge_incident_ref(incident_id: str) -> str:
+    """Return the Proofhouse IncidentRef projection for a single Forge incident.
+
+    Args:
+        incident_id: Incident ID (e.g., "2026-03-04-001") or suffix (e.g., "001")
+    """
+    cfg = load_config()
+    incident = find_incident(cfg.incidents_dir, incident_id)
+
+    if incident is None:
+        return f"No incident found matching '{incident_id}'."
+
+    return json.dumps(incident.to_ref_envelope(), indent=2)
+
+
+@mcp.tool()
 def forge_stats(
     project: str = "",
     severity: str = "",
@@ -307,6 +323,14 @@ def forge_schema() -> str:
                 "context", "root_cause", "immediate_fix", "systemic_takeaway",
                 "tags", "related_incidents", "playbook_entry",
             ],
+            "emitted_refs": ["IncidentRef"],
+            "incident_ref_fields": [
+                "incident_id", "failure_type", "severity", "capability_area",
+                "lifecycle_stage", "issue_class", "workflow_ref", "assessment_ref",
+                "policy_decision_ref", "asset_ref", "derivation_ref", "transform_ref",
+                "use_approval_ref", "playbook_entry",
+            ],
+            "pointer_ref_fields": PROOFHOUSE_REF_FIELDS,
         },
         indent=2,
     )

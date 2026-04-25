@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
@@ -231,6 +232,27 @@ def show(
         raise typer.Exit(1)
 
     display_incident_detail(incident)
+
+
+@app.command("ref")
+def ref_cmd(
+    incident_id: str = typer.Argument(help="Incident ID (e.g., '2026-03-04-001' or '001')"),
+    compact: bool = typer.Option(False, "--compact", help="Print single-line JSON"),
+) -> None:
+    """Print the Proofhouse IncidentRef projection for a single incident."""
+    try:
+        cfg = load_config()
+    except FileNotFoundError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+    incident = find_incident(cfg.incidents_dir, incident_id)
+    if incident is None:
+        print_error(f"No incident found matching '{incident_id}'.")
+        raise typer.Exit(1)
+
+    indent = None if compact else 2
+    typer.echo(json.dumps(incident.to_ref_envelope(), indent=indent))
 
 
 @app.command()

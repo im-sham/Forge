@@ -41,9 +41,9 @@ Pointers should be summaries or IDs only. Do not copy raw source material, custo
 
 ### `IncidentRef`
 
-The current YAML schema is minimal and tag-based. V0.1 `IncidentRef` should be introduced as a compatibility projection over existing incidents before changing the underlying storage format.
+The current YAML schema is minimal and tag-based. V0.1 `IncidentRef` is implemented as a compatibility projection over existing incidents before changing the underlying storage format.
 
-Minimum future projection:
+Current projection:
 
 - `incident_id`
 - `failure_type`
@@ -52,9 +52,21 @@ Minimum future projection:
 - `lifecycle_stage`
 - `issue_class`
 - `workflow_ref`
+- `assessment_ref`
 - `policy_decision_ref`
 - `asset_ref`
+- `derivation_ref`
+- `transform_ref`
+- `use_approval_ref`
 - `playbook_entry`
+
+Current implementation:
+
+- `forge_cli/models.py` builds `IncidentRef` and the V0.1 shared envelope from existing incident fields.
+- `forge ref <incident-id>` prints the projection as JSON for CLI consumers.
+- `forge_incident_ref` exposes the same projection to MCP clients.
+- Existing YAML incident files are not rewritten and do not gain new required fields.
+- Forge local data does not currently carry tenant or environment metadata, so the projection emits `organization_id: "unscoped"` and `environment_id: "default"` until structured metadata exists.
 
 ## Current Implementation Seams
 
