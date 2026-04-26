@@ -28,3 +28,27 @@ systemic_takeaway: |
 tags: []
 related_incidents: []
 playbook_entry: ""
+
+# Optional Proofhouse structured axes.
+# Existing incidents may omit this section. Keep values as classifications,
+# reason codes, or pointer refs; do not copy workflow truth, approval state,
+# readiness reports, export manifests, source documents, or asset payloads.
+capability_area: ""                 # workflow_context | readiness | governance | forge | operational_learning | analyst | external_integration
+lifecycle_stage: ""                 # document_review | evidence_review | assessment | policy_decision | redaction_review | use_approval | promotion | asset_derivation | transform | internal_eval | export | escalation | runtime | handoff
+issue_class: ""                     # redaction_miss | rights_ambiguity | promotion_failure | export_control_failure | transform_failure | derivation_quality_failure | evidence_gap | escalation_miss | reviewer_disagreement | other
+workflow_archetype: ""              # e.g. document_operations
+subject_type: ""                    # e.g. document_packet
+blocked_use_class: ""               # evidence_only | internal_eval | internal_training | policy_learning | external_export
+observed_state: {}                  # incident-local state summary only
+
+# Optional pointer-style shared refs. Store refs, IDs, snapshots, summaries,
+# or digests only. Dereference canonical state through the owning capability.
+workflow_ref: null
+evidence_ref: null
+workflow_evidence_snapshot: null
+assessment_ref: null
+policy_decision_ref: null
+use_approval_ref: null
+asset_ref: null
+derivation_ref: null
+transform_ref: null

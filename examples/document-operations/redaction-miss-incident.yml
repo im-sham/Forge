@@ -1,0 +1,125 @@
+id: "example-document-ops-redaction-miss"
+timestamp: "2026-04-26T00:00:00Z"
+reported_by: "forge-example"
+
+project: "proofhouse-document-operations"
+agent: "document-review-fixture"
+platform: "fixture"
+severity: "safety-critical"
+failure_type: "safety_boundary_violation"
+
+expected_behavior: |
+  Candidate internal-eval assets should not advance from document-review
+  exception evidence until Governance redaction review and use approval refs
+  are present and dereferenceable through their owning systems.
+actual_behavior: |
+  A candidate internal-eval handoff referenced the exception packet before
+  the redaction transform pointer was available. Forge records this as an
+  incident-memory pattern and does not store source document contents.
+context: |
+  Sanitized fixture for document_ops_regulated_review_v0. The canonical
+  workflow, evidence snapshot, readiness assessment, policy decision, use
+  approval, asset, derivation, and transform records remain with their owning
+  Proofhouse capabilities.
+
+root_cause: "missing_redaction_transform_ref_before_eval_handoff"
+immediate_fix: |
+  Block the internal-eval handoff until Governance and Operational Learning
+  refs are present, then re-run redaction review through the owning systems.
+systemic_takeaway: |
+  Redaction misses should be structured incidents with pointer refs, not
+  source-document excerpts or freeform tags only.
+
+tags:
+  - "document-operations"
+  - "operational-learning"
+  - "governance"
+  - "redaction-miss"
+  - "internal-eval"
+related_incidents: []
+playbook_entry: "document-review-redaction-miss"
+
+capability_area: "governance"
+lifecycle_stage: "redaction_review"
+issue_class: "redaction_miss"
+workflow_archetype: "document_operations"
+subject_type: "document_packet"
+blocked_use_class: "internal_eval"
+observed_state:
+  fixture_id: "document_ops_regulated_review_v0"
+  incident_observation: "redaction transform pointer missing before internal-eval handoff"
+  boundary_note: "Forge stores only incident classification, summaries, and refs."
+
+workflow_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "WorkflowRef"
+  canonical_owner: "workflow_context"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "workflow:document_ops_regulated_review_v0"
+    workflow_id: "document_ops_regulated_review_v0"
+    snapshot_id: "workflow-snapshot:document_ops_regulated_review_v0:g1"
+
+workflow_evidence_snapshot:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "WorkflowEvidenceSnapshot"
+  canonical_owner: "workflow_context"
+  cache_policy: "digest_snapshot"
+  ref:
+    ref_id: "workflow-evidence-snapshot:document_ops_regulated_review_v0:g1"
+    snapshot_id: "workflow-evidence-snapshot:document_ops_regulated_review_v0:g1"
+    digest: "sha256:document-ops-fixture-placeholder"
+
+assessment_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "AssessmentRef"
+  canonical_owner: "readiness"
+  cache_policy: "summary_snapshot"
+  ref:
+    ref_id: "assessment:document_ops_regulated_review_v0:g2"
+    assessment_type: "operational_learning_suitability"
+
+policy_decision_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "PolicyDecisionRef"
+  canonical_owner: "governance"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "policy-decision:document_ops_review_required:g2"
+    decision_id: "policy-decision:document_ops_review_required:g2"
+
+use_approval_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "UseApprovalRef"
+  canonical_owner: "governance"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "use-approval:document_ops_internal_eval:g2"
+    approval_id: "use-approval:document_ops_internal_eval:g2"
+
+asset_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "AssetRef"
+  canonical_owner: "operational_learning"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "asset:document_ops_exception_packet_internal_eval_candidate:g2"
+    asset_id: "asset:document_ops_exception_packet_internal_eval_candidate:g2"
+
+derivation_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "DerivationRef"
+  canonical_owner: "operational_learning"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "derivation:document_ops_exception_packet:g2"
+    derivation_id: "derivation:document_ops_exception_packet:g2"
+
+transform_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "TransformRef"
+  canonical_owner: "operational_learning"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "transform:redaction:document_ops_exception_packet:g2"
+    transform_id: "transform:redaction:document_ops_exception_packet:g2"

@@ -10,6 +10,16 @@ Do not infer that an incident record grants approval for internal eval, internal
 
 If a Forge `IncidentRef` projection is present or requested, treat it as a compact pointer and summary only. Do not infer missing Workflow Context, Readiness, Governance, or Operational Learning state from Forge tags.
 
+For document-operations or Operational Learning incidents, prefer the structured axes over freeform tags:
+- `capability_area`
+- `lifecycle_stage`
+- `issue_class`
+- `workflow_archetype`
+- `subject_type`
+- `blocked_use_class`
+
+Expected document-operations issue classes include `redaction_miss`, `rights_ambiguity`, `promotion_failure`, `export_control_failure`, `transform_failure`, `derivation_quality_failure`, `evidence_gap`, `escalation_miss`, and `reviewer_disagreement`. Treat `workflow_ref`, `evidence_ref`, `workflow_evidence_snapshot`, `assessment_ref`, `policy_decision_ref`, `use_approval_ref`, `asset_ref`, `derivation_ref`, and `transform_ref` as pointer refs only.
+
 ## Incident Data
 
 [INCIDENTS ARE INSERTED HERE AS YAML]

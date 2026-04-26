@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from forge_cli.models import INCIDENT_FIELD_ORDER, Incident
+from forge_cli.models import Incident
 
 
 # --- Custom YAML dumper that uses block scalars for multiline strings ---
@@ -61,10 +61,7 @@ def save_incident(incident: Incident, incidents_dir: Path) -> Path:
 
     filepath = month_dir / f"{incident.id}.yml"
 
-    # Build ordered dict matching template field layout
-    data = {}
-    for key in INCIDENT_FIELD_ORDER:
-        data[key] = getattr(incident, key)
+    data = incident.to_dict()
 
     with open(filepath, "w") as f:
         yaml.dump(data, f, Dumper=_BlockDumper, default_flow_style=False, allow_unicode=True)

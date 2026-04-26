@@ -1,4 +1,5 @@
 from datetime import date
+from pathlib import Path
 
 from forge_cli.incident_store import (
     find_incident,
@@ -153,3 +154,26 @@ def test_list_incidents_tag_filter(tmp_incidents_dir, sample_data):
 
     result = list_incidents(tmp_incidents_dir, tag="nonexistent-tag")
     assert len(result) == 0
+
+
+def test_document_operations_example_loads_as_structured_stub():
+    fixture_path = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "document-operations"
+        / "redaction-miss-incident.yml"
+    )
+
+    incident = load_incident(fixture_path)
+
+    assert incident.project == "proofhouse-document-operations"
+    assert incident.capability_area == "governance"
+    assert incident.lifecycle_stage == "redaction_review"
+    assert incident.issue_class == "redaction_miss"
+    assert incident.workflow_archetype == "document_operations"
+    assert incident.workflow_ref is not None
+    assert incident.workflow_evidence_snapshot is not None
+    assert incident.assessment_ref is not None
+    assert incident.use_approval_ref is not None
+    assert incident.workflow_ref["cache_policy"] == "ref_only"
+    assert incident.asset_ref["cache_policy"] == "ref_only"

@@ -175,19 +175,25 @@ Each incident is a YAML file in `incidents/YYYY-MM/` with structured fields cove
 - event details: `expected_behavior`, `actual_behavior`, `context`
 - resolution: `root_cause`, `immediate_fix`, `systemic_takeaway`
 - metadata: `tags`, `related_incidents`, `playbook_entry`
+- optional Proofhouse axes: `capability_area`, `lifecycle_stage`, `issue_class`, `workflow_archetype`, `subject_type`, `blocked_use_class`, `observed_state`
+- optional pointer refs: `workflow_ref`, `evidence_ref`, `workflow_evidence_snapshot`, `assessment_ref`, `policy_decision_ref`, `use_approval_ref`, `asset_ref`, `derivation_ref`, `transform_ref`
+
+Existing incident YAML remains compatible: all Proofhouse axes and pointer refs are optional. Older files that only contain the original classification/event/resolution/metadata fields still load, list, analyze, and emit a compatibility `IncidentRef`.
 
 ### Proofhouse Pointer Convention
 
 When an incident relates to Proofhouse workflow evidence or Operational Learning, keep Forge records pointer-based:
 
-- use `context` for short human-readable references
-- use `tags` for capability markers such as `workflow-context`, `readiness`, `governance`, `operational-learning`, `redaction`, or `use-approval`
+- use structured axes for document-operations and Operational Learning failure classes
+- use pointer ref fields for `WorkflowRef`, `EvidenceRef` / `WorkflowEvidenceSnapshot`, `AssessmentRef`, `PolicyDecisionRef`, `UseApprovalRef`, and Operational Learning `AssetRef`, `DerivationRef`, or `TransformRef` placeholders
+- use `context` only for short human-readable summaries
+- use `tags` as secondary discovery aids, not as the only structure
 - use `related_incidents` only for Forge incident IDs
 - do not paste raw customer data, regulated personal data, credentials, or training/eval source material into an incident
 
 Governance remains the approval and export-control plane. Forge may record that a handoff or approval issue occurred, but the authoritative rights, redaction, use-approval, manifest, and export state lives outside Forge.
 
-Forge emits a Proofhouse V0.1 `IncidentRef` projection through `forge ref <id>` and the `forge_incident_ref` MCP tool. This projection is generated from the current YAML fields and does not change the saved incident format. Until Forge stores structured tenant metadata, the projection uses `organization_id: "unscoped"` and `environment_id: "default"` to avoid implying that `project` is a tenant boundary.
+Forge emits a Proofhouse V0.1 `IncidentRef` projection through `forge ref <id>` and the `forge_incident_ref` MCP tool. This projection is generated from saved YAML fields when structured fields exist, and falls back to compatibility inference for older incidents. Until Forge stores structured tenant metadata, the projection uses `organization_id: "unscoped"` and `environment_id: "default"` to avoid implying that `project` is a tenant boundary.
 
 ### Severity Levels
 
@@ -200,6 +206,14 @@ Forge emits a Proofhouse V0.1 `IncidentRef` projection through `forge ref <id>` 
 ### Failure Types
 
 `hallucination`, `tool_misuse`, `scope_creep`, `safety_boundary_violation`, `performance_degradation`, `context_loss`, `confidence_miscalibration`, `instruction_drift`, `error_handling_failure`, `integration_failure`, `adversarial_vulnerability`, `other`
+
+### Proofhouse Issue Classes
+
+Document-operations and Operational Learning incidents should use `issue_class` values such as:
+
+`redaction_miss`, `rights_ambiguity`, `promotion_failure`, `export_control_failure`, `transform_failure`, `derivation_quality_failure`, `evidence_gap`, `escalation_miss`, `reviewer_disagreement`
+
+See `examples/document-operations/redaction-miss-incident.yml` for a sanitized fixture stub and `templates/playbooks/document-review-redaction-miss.md` for the seeded playbook template.
 
 ## Analysis Modes
 

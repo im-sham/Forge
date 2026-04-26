@@ -27,23 +27,51 @@ Forge does not own:
 Forge incidents may point to:
 
 - `WorkflowRef`
+- `EvidenceRef`
+- `WorkflowEvidenceSnapshot`
 - `SubjectRef`
 - `AssessmentRef`
 - `PolicyDecisionRef`
+- `UseApprovalRef`
 - `AssetRef`
 - `DerivationRef`
 - `TransformRef`
-- `UseApprovalRef`
 
 Pointers should be summaries or IDs only. Do not copy raw source material, customer data, regulated personal data, rights records, approval records, export manifests, or training/eval source material into Forge.
+
+## Structured Incident Axes
+
+Forge keeps `failure_type` as the mechanism-level classification and stores Proofhouse / document-operations learning as optional axes:
+
+- `capability_area`
+- `lifecycle_stage`
+- `issue_class`
+- `workflow_archetype`
+- `subject_type`
+- `blocked_use_class`
+- `observed_state`
+
+The first document-operations issue classes are:
+
+- `redaction_miss`
+- `rights_ambiguity`
+- `promotion_failure`
+- `export_control_failure`
+- `transform_failure`
+- `derivation_quality_failure`
+- `evidence_gap`
+- `escalation_miss`
+- `reviewer_disagreement`
+
+Existing incident YAML can omit every structured axis and pointer field. New incidents should use these fields when the incident touches Proofhouse workflow evidence, Governance use control, or Operational Learning promotion/transform paths.
 
 ## Shared Refs This Repo Should Emit
 
 ### `IncidentRef`
 
-The current YAML schema is minimal and tag-based. V0.1 `IncidentRef` is implemented as a compatibility projection over existing incidents before changing the underlying storage format.
+The YAML schema preserves the original minimal incident fields and adds optional V0.1 structured axes / pointer refs for Proofhouse incidents. V0.1 `IncidentRef` remains a compatibility projection over both old and new YAML shapes.
 
-Current projection:
+Projection fields:
 
 - `incident_id`
 - `failure_type`
@@ -51,18 +79,23 @@ Current projection:
 - `capability_area`
 - `lifecycle_stage`
 - `issue_class`
+- `workflow_archetype`
+- `subject_type`
+- `blocked_use_class`
 - `workflow_ref`
+- `evidence_ref`
+- `workflow_evidence_snapshot`
 - `assessment_ref`
 - `policy_decision_ref`
+- `use_approval_ref`
 - `asset_ref`
 - `derivation_ref`
 - `transform_ref`
-- `use_approval_ref`
 - `playbook_entry`
 
 Current implementation:
 
-- `forge_cli/models.py` builds `IncidentRef` and the V0.1 shared envelope from existing incident fields.
+- `forge_cli/models.py` builds `IncidentRef` and the V0.1 shared envelope from incident fields.
 - `forge ref <incident-id>` prints the projection as JSON for CLI consumers.
 - `forge_incident_ref` exposes the same projection to MCP clients.
 - Existing YAML incident files are not rewritten and do not gain new required fields.
@@ -79,7 +112,7 @@ Current implementation:
 
 Keep `failure_type` as the mechanism-level classification. Add Operational Learning axes as separate fields or compatibility projections rather than overloading `tags`.
 
-## Pointer Tags Until Structured Fields Exist
+## Pointer Tags As Discovery Aids
 
 Use tags like:
 
@@ -92,4 +125,4 @@ Use tags like:
 - `export-control`
 - `derivation-quality`
 
-Tags are a bridge, not the final contract.
+Tags are secondary discovery aids, not the structured contract. The sanitized document-operations stub at `examples/document-operations/redaction-miss-incident.yml` shows the preferred structured pattern.

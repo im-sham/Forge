@@ -32,7 +32,18 @@ from forge_cli.incident_store import (
     load_incident,
     save_incident,
 )
-from forge_cli.models import FailureType, Incident, Severity
+from forge_cli.models import (
+    CAPABILITY_AREA_VALUES,
+    ISSUE_CLASS_VALUES,
+    LIFECYCLE_STAGE_VALUES,
+    PROOFHOUSE_REF_FIELDS,
+    USE_CLASS_VALUES,
+    FailureType,
+    Incident,
+    Severity,
+    parse_observed_state,
+    parse_pointer_value,
+)
 from forge_cli.analyzer import (
     analyze_incidents,
     next_analysis_output_path,
@@ -93,6 +104,31 @@ def _open_editor() -> str:
         os.unlink(tmppath)
 
 
+def _validate_optional_choice(field_name: str, value: str | None, choices: list[str]) -> str:
+    if not value:
+        return ""
+    if value not in choices:
+        print_error(f"Invalid {field_name} '{value}'. Must be one of: {', '.join(choices)}")
+        raise typer.Exit(1)
+    return value
+
+
+def _parse_optional_ref(field_name: str, value: str | None) -> dict | None:
+    try:
+        return parse_pointer_value(value, field_name)
+    except (TypeError, ValueError) as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+
+def _parse_optional_observed_state(value: str | None) -> dict | None:
+    try:
+        return parse_observed_state(value)
+    except (TypeError, ValueError) as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+
 @app.command()
 def log(
     project: Optional[str] = typer.Option(None, "--project", "-p", help="Project name"),
@@ -100,6 +136,91 @@ def log(
     failure_type: Optional[str] = typer.Option(None, "--type", "-t", help="Failure type"),
     agent: Optional[str] = typer.Option(None, "--agent", "-a", help="Agent or component name"),
     platform: Optional[str] = typer.Option(None, "--platform", "-P", help="AI tool/platform"),
+    capability_area: Optional[str] = typer.Option(
+        None,
+        "--capability-area",
+        help="Proofhouse owner area involved in the incident",
+    ),
+    lifecycle_stage: Optional[str] = typer.Option(
+        None,
+        "--lifecycle-stage",
+        help="Proofhouse lifecycle stage involved in the incident",
+    ),
+    issue_class: Optional[str] = typer.Option(
+        None,
+        "--issue-class",
+        help="Structured issue class, for example redaction_miss or rights_ambiguity",
+    ),
+    workflow_archetype: Optional[str] = typer.Option(
+        None,
+        "--workflow-archetype",
+        help="Workflow archetype, for example document_operations",
+    ),
+    subject_type: Optional[str] = typer.Option(
+        None,
+        "--subject-type",
+        help="Subject class, for example document_packet",
+    ),
+    blocked_use_class: Optional[str] = typer.Option(
+        None,
+        "--blocked-use-class",
+        help="Use class blocked by the incident, if any",
+    ),
+    observed_state: Optional[str] = typer.Option(
+        None,
+        "--observed-state",
+        help="Incident-local JSON object or summary; do not copy canonical state",
+    ),
+    workflow_ref: Optional[str] = typer.Option(
+        None,
+        "--workflow-ref",
+        help="WorkflowRef pointer as JSON object or ref id",
+    ),
+    evidence_ref: Optional[str] = typer.Option(
+        None,
+        "--evidence-ref",
+        help="EvidenceRef pointer as JSON object or ref id",
+    ),
+    workflow_evidence_snapshot: Optional[str] = typer.Option(
+        None,
+        "--workflow-evidence-snapshot",
+        help="WorkflowEvidenceSnapshot pointer as JSON object or snapshot id",
+    ),
+    assessment_ref: Optional[str] = typer.Option(
+        None,
+        "--assessment-ref",
+        help="AssessmentRef pointer as JSON object or ref id",
+    ),
+    policy_decision_ref: Optional[str] = typer.Option(
+        None,
+        "--policy-decision-ref",
+        help="PolicyDecisionRef pointer as JSON object or ref id",
+    ),
+    use_approval_ref: Optional[str] = typer.Option(
+        None,
+        "--use-approval-ref",
+        help="UseApprovalRef pointer as JSON object or ref id",
+    ),
+    asset_ref: Optional[str] = typer.Option(
+        None,
+        "--asset-ref",
+        help="AssetRef pointer as JSON object or ref id",
+    ),
+    derivation_ref: Optional[str] = typer.Option(
+        None,
+        "--derivation-ref",
+        help="DerivationRef pointer as JSON object or ref id",
+    ),
+    transform_ref: Optional[str] = typer.Option(
+        None,
+        "--transform-ref",
+        help="TransformRef pointer as JSON object or ref id",
+    ),
+    playbook_entry: Optional[str] = typer.Option(
+        None,
+        "--playbook-entry",
+        help="Known playbook entry slug",
+    ),
 ) -> None:
     """Log a new incident. Prompts interactively for missing fields."""
     try:
@@ -139,6 +260,17 @@ def log(
         )
         raise typer.Exit(1)
 
+    capability_area = _validate_optional_choice(
+        "capability_area", capability_area, CAPABILITY_AREA_VALUES
+    )
+    lifecycle_stage = _validate_optional_choice(
+        "lifecycle_stage", lifecycle_stage, LIFECYCLE_STAGE_VALUES
+    )
+    issue_class = _validate_optional_choice("issue_class", issue_class, ISSUE_CLASS_VALUES)
+    blocked_use_class = _validate_optional_choice(
+        "blocked_use_class", blocked_use_class, USE_CLASS_VALUES
+    )
+
     # What happened
     expected = _prompt_text("Expected behavior")
     actual = _prompt_text("Actual behavior")
@@ -152,6 +284,22 @@ def log(
     # Metadata
     tags_input = typer.prompt("Tags (comma-separated)", default="")
     tags = [t.strip() for t in tags_input.split(",") if t.strip()]
+
+    pointer_refs = {
+        field_name: _parse_optional_ref(field_name, value)
+        for field_name, value in {
+            "workflow_ref": workflow_ref,
+            "evidence_ref": evidence_ref,
+            "workflow_evidence_snapshot": workflow_evidence_snapshot,
+            "assessment_ref": assessment_ref,
+            "policy_decision_ref": policy_decision_ref,
+            "use_approval_ref": use_approval_ref,
+            "asset_ref": asset_ref,
+            "derivation_ref": derivation_ref,
+            "transform_ref": transform_ref,
+        }.items()
+        if field_name in PROOFHOUSE_REF_FIELDS
+    }
 
     # Build incident
     now = datetime.now(timezone.utc)
@@ -173,6 +321,15 @@ def log(
         immediate_fix=fix,
         systemic_takeaway=takeaway,
         tags=tags,
+        playbook_entry=playbook_entry or "",
+        capability_area=capability_area,
+        lifecycle_stage=lifecycle_stage,
+        issue_class=issue_class,
+        workflow_archetype=workflow_archetype or "",
+        subject_type=subject_type or "",
+        blocked_use_class=blocked_use_class,
+        observed_state=_parse_optional_observed_state(observed_state),
+        **pointer_refs,
     )
 
     # Confirm

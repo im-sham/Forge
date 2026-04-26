@@ -70,6 +70,18 @@ def display_incident_panel(incident: Incident) -> None:
     ]
     if incident.tags:
         lines.append(f"[cyan]Tags:[/cyan]       {', '.join(incident.tags)}")
+    axes = [
+        value
+        for value in [
+            incident.capability_area,
+            incident.lifecycle_stage,
+            incident.issue_class,
+            incident.workflow_archetype,
+        ]
+        if value
+    ]
+    if axes:
+        lines.append(f"[cyan]Axes:[/cyan]       {', '.join(axes)}")
 
     content = "\n".join(lines)
     console.print(Panel(content, title="Incident Captured", border_style="green"))
@@ -109,6 +121,43 @@ def display_incident_detail(incident: Incident) -> None:
     if incident.tags:
         lines.append("")
         lines.append(f"[cyan bold]Tags:[/]          {', '.join(incident.tags)}")
+    axes = [
+        ("Capability area", incident.capability_area),
+        ("Lifecycle stage", incident.lifecycle_stage),
+        ("Issue class", incident.issue_class),
+        ("Workflow archetype", incident.workflow_archetype),
+        ("Subject type", incident.subject_type),
+        ("Blocked use class", incident.blocked_use_class),
+    ]
+    shown_axes = [(label, value) for label, value in axes if value]
+    if shown_axes:
+        lines.append("")
+        lines.append("[cyan bold]Structured axes:[/]")
+        for label, value in shown_axes:
+            lines.append(f"  {label}: {value}")
+    if incident.observed_state:
+        lines.append("")
+        lines.append("[cyan bold]Observed state:[/]")
+        for key, value in incident.observed_state.items():
+            lines.append(f"  {key}: {value}")
+    present_refs = [
+        field_name
+        for field_name in [
+            "workflow_ref",
+            "evidence_ref",
+            "workflow_evidence_snapshot",
+            "assessment_ref",
+            "policy_decision_ref",
+            "use_approval_ref",
+            "asset_ref",
+            "derivation_ref",
+            "transform_ref",
+        ]
+        if getattr(incident, field_name)
+    ]
+    if present_refs:
+        lines.append("")
+        lines.append(f"[cyan bold]Pointer refs:[/]    {', '.join(present_refs)}")
     if incident.related_incidents:
         lines.append(f"[cyan bold]Related:[/]       {', '.join(incident.related_incidents)}")
     if incident.playbook_entry:

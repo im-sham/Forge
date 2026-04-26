@@ -47,6 +47,17 @@ Recommended fields: `platform`, `context`, `root_cause`, `tags`
 
 When logging Proofhouse-related incidents, use pointer-style context and tags instead of copying sensitive source material. Suitable tags include `workflow-context`, `readiness`, `governance`, `operational-learning`, `redaction`, and `use-approval`. Do not paste raw customer data, regulated personal data, credentials, or training/eval source material into Forge.
 
+For document-operations or Operational Learning incidents, prefer structured axes when the tool surface supports them:
+
+- `capability_area`
+- `lifecycle_stage`
+- `issue_class`
+- `workflow_archetype`
+- `subject_type`
+- `blocked_use_class`
+
+Use pointer refs for `WorkflowRef`, `EvidenceRef` / `WorkflowEvidenceSnapshot`, `AssessmentRef`, `PolicyDecisionRef`, `UseApprovalRef`, and optional `AssetRef`, `DerivationRef`, or `TransformRef`. Forge should record the incident and recurrence pattern, not source workflow truth, readiness score truth, approval state, export manifests, or source document / asset payloads.
+
 Example:
 ```
 forge_log(

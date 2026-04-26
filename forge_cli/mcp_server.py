@@ -16,7 +16,19 @@ from forge_cli.incident_store import (
     list_incidents,
     save_incident,
 )
-from forge_cli.models import FailureType, Incident, PROOFHOUSE_REF_FIELDS, Severity
+from forge_cli.models import (
+    CAPABILITY_AREA_VALUES,
+    ISSUE_CLASS_VALUES,
+    LIFECYCLE_STAGE_VALUES,
+    PROOFHOUSE_AXIS_FIELDS,
+    PROOFHOUSE_REF_FIELDS,
+    USE_CLASS_VALUES,
+    FailureType,
+    Incident,
+    Severity,
+    parse_observed_state,
+    parse_pointer_value,
+)
 
 mcp = FastMCP("Forge", json_response=True)
 
@@ -47,6 +59,20 @@ def _incident_to_text(incident: Incident) -> str:
         lines += ["", f"Systemic Takeaway: {incident.systemic_takeaway.strip()}"]
     if incident.tags:
         lines.append(f"\nTags: {', '.join(incident.tags)}")
+    axes = [
+        ("Capability Area", incident.capability_area),
+        ("Lifecycle Stage", incident.lifecycle_stage),
+        ("Issue Class", incident.issue_class),
+        ("Workflow Archetype", incident.workflow_archetype),
+        ("Subject Type", incident.subject_type),
+        ("Blocked Use Class", incident.blocked_use_class),
+    ]
+    shown_axes = [f"{label}: {value}" for label, value in axes if value]
+    if shown_axes:
+        lines += ["", "Structured Axes:", *shown_axes]
+    present_refs = [field_name for field_name in PROOFHOUSE_REF_FIELDS if getattr(incident, field_name)]
+    if present_refs:
+        lines += ["", f"Pointer Refs: {', '.join(present_refs)}"]
     if incident.related_incidents:
         lines.append(f"Related: {', '.join(incident.related_incidents)}")
     if incident.playbook_entry:
@@ -70,6 +96,23 @@ def forge_log(
     tags: str = "",
     related_incidents: str = "",
     reported_by: str = "",
+    playbook_entry: str = "",
+    capability_area: str = "",
+    lifecycle_stage: str = "",
+    issue_class: str = "",
+    workflow_archetype: str = "",
+    subject_type: str = "",
+    blocked_use_class: str = "",
+    observed_state: str = "",
+    workflow_ref: str = "",
+    evidence_ref: str = "",
+    workflow_evidence_snapshot: str = "",
+    assessment_ref: str = "",
+    policy_decision_ref: str = "",
+    use_approval_ref: str = "",
+    asset_ref: str = "",
+    derivation_ref: str = "",
+    transform_ref: str = "",
 ) -> str:
     """Log a new forge incident. Creates a YAML file in the incidents directory.
 
@@ -88,6 +131,23 @@ def forge_log(
         tags: Comma-separated tags (e.g., "silent-fallback,observability-gap")
         related_incidents: Comma-separated related incident IDs (e.g., "2026-03-04-001,2026-03-04-002")
         reported_by: Who reported this. Defaults to config default_reporter.
+        playbook_entry: Optional playbook slug.
+        capability_area: Optional structured Proofhouse capability area.
+        lifecycle_stage: Optional structured lifecycle stage.
+        issue_class: Optional structured issue class.
+        workflow_archetype: Optional workflow archetype such as document_operations.
+        subject_type: Optional subject class such as document_packet.
+        blocked_use_class: Optional blocked use class such as internal_eval.
+        observed_state: Optional incident-local JSON object or summary.
+        workflow_ref: Optional WorkflowRef pointer as JSON object or ref id.
+        evidence_ref: Optional EvidenceRef pointer as JSON object or ref id.
+        workflow_evidence_snapshot: Optional WorkflowEvidenceSnapshot pointer as JSON object or id.
+        assessment_ref: Optional AssessmentRef pointer as JSON object or ref id.
+        policy_decision_ref: Optional PolicyDecisionRef pointer as JSON object or ref id.
+        use_approval_ref: Optional UseApprovalRef pointer as JSON object or ref id.
+        asset_ref: Optional AssetRef pointer as JSON object or ref id.
+        derivation_ref: Optional DerivationRef pointer as JSON object or ref id.
+        transform_ref: Optional TransformRef pointer as JSON object or ref id.
     """
     cfg = load_config()
 
@@ -100,6 +160,33 @@ def forge_log(
     valid_types = [f.value for f in FailureType]
     if failure_type not in valid_types:
         return f"Invalid failure_type '{failure_type}'. Must be one of: {', '.join(valid_types)}"
+
+    for field_name, value, choices in [
+        ("capability_area", capability_area, CAPABILITY_AREA_VALUES),
+        ("lifecycle_stage", lifecycle_stage, LIFECYCLE_STAGE_VALUES),
+        ("issue_class", issue_class, ISSUE_CLASS_VALUES),
+        ("blocked_use_class", blocked_use_class, USE_CLASS_VALUES),
+    ]:
+        if value and value not in choices:
+            return f"Invalid {field_name} '{value}'. Must be one of: {', '.join(choices)}"
+
+    try:
+        pointer_refs = {
+            "workflow_ref": parse_pointer_value(workflow_ref, "workflow_ref"),
+            "evidence_ref": parse_pointer_value(evidence_ref, "evidence_ref"),
+            "workflow_evidence_snapshot": parse_pointer_value(
+                workflow_evidence_snapshot, "workflow_evidence_snapshot"
+            ),
+            "assessment_ref": parse_pointer_value(assessment_ref, "assessment_ref"),
+            "policy_decision_ref": parse_pointer_value(policy_decision_ref, "policy_decision_ref"),
+            "use_approval_ref": parse_pointer_value(use_approval_ref, "use_approval_ref"),
+            "asset_ref": parse_pointer_value(asset_ref, "asset_ref"),
+            "derivation_ref": parse_pointer_value(derivation_ref, "derivation_ref"),
+            "transform_ref": parse_pointer_value(transform_ref, "transform_ref"),
+        }
+        observed = parse_observed_state(observed_state)
+    except (TypeError, ValueError) as e:
+        return str(e)
 
     now = datetime.now(timezone.utc)
     incident_id = generate_id(cfg.incidents_dir, now.date())
@@ -124,6 +211,15 @@ def forge_log(
         systemic_takeaway=systemic_takeaway,
         tags=tag_list,
         related_incidents=related_list,
+        playbook_entry=playbook_entry,
+        capability_area=capability_area,
+        lifecycle_stage=lifecycle_stage,
+        issue_class=issue_class,
+        workflow_archetype=workflow_archetype,
+        subject_type=subject_type,
+        blocked_use_class=blocked_use_class,
+        observed_state=observed,
+        **pointer_refs,
     )
 
     filepath = save_incident(incident, cfg.incidents_dir)
@@ -322,15 +418,30 @@ def forge_schema() -> str:
                 "severity", "failure_type", "expected_behavior", "actual_behavior",
                 "context", "root_cause", "immediate_fix", "systemic_takeaway",
                 "tags", "related_incidents", "playbook_entry",
+                "capability_area", "lifecycle_stage", "issue_class", "workflow_archetype",
+                "subject_type", "blocked_use_class", "observed_state",
+                "workflow_ref", "evidence_ref", "workflow_evidence_snapshot",
+                "assessment_ref", "policy_decision_ref", "use_approval_ref",
+                "asset_ref", "derivation_ref", "transform_ref",
             ],
+            "structured_axis_fields": PROOFHOUSE_AXIS_FIELDS,
+            "structured_axis_values": {
+                "capability_area": CAPABILITY_AREA_VALUES,
+                "lifecycle_stage": LIFECYCLE_STAGE_VALUES,
+                "issue_class": ISSUE_CLASS_VALUES,
+                "blocked_use_class": USE_CLASS_VALUES,
+            },
             "emitted_refs": ["IncidentRef"],
             "incident_ref_fields": [
                 "incident_id", "failure_type", "severity", "capability_area",
-                "lifecycle_stage", "issue_class", "workflow_ref", "assessment_ref",
-                "policy_decision_ref", "asset_ref", "derivation_ref", "transform_ref",
-                "use_approval_ref", "playbook_entry",
+                "lifecycle_stage", "issue_class", "workflow_archetype", "subject_type",
+                "blocked_use_class", "workflow_ref", "evidence_ref",
+                "workflow_evidence_snapshot", "assessment_ref", "policy_decision_ref",
+                "use_approval_ref", "asset_ref", "derivation_ref", "transform_ref",
+                "playbook_entry",
             ],
             "pointer_ref_fields": PROOFHOUSE_REF_FIELDS,
+            "compatibility": "Existing incident YAML can omit all structured axis and pointer fields.",
         },
         indent=2,
     )
