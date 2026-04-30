@@ -177,3 +177,61 @@ def test_document_operations_example_loads_as_structured_stub():
     assert incident.use_approval_ref is not None
     assert incident.workflow_ref["cache_policy"] == "ref_only"
     assert incident.asset_ref["cache_policy"] == "ref_only"
+
+
+def test_claims_rate_source_example_roundtrips_to_valid_incident_ref():
+    fixture_path = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "claims"
+        / "rate-source-ambiguity-incident.yml"
+    )
+
+    incident = load_incident(fixture_path)
+    result = incident.to_dict()
+    envelope = incident.to_ref_envelope()
+    ref = envelope["ref"]
+
+    assert incident.project == "proofhouse-claims"
+    assert incident.issue_class == "rate_source_ambiguity"
+    assert incident.workflow_archetype == "claims_hybrid_high_dollar_review"
+    assert incident.subject_type == "claim_review_packet"
+    assert result["workflow_ref"]["cache_policy"] == "summary_snapshot"
+    assert result["workflow_evidence_snapshot"]["cache_policy"] == "digest_snapshot"
+    assert result["assessment_ref"]["cache_policy"] == "summary_snapshot"
+    assert result["policy_decision_ref"]["cache_policy"] == "ref_only"
+    assert result["use_approval_ref"]["cache_policy"] == "ref_only"
+    assert ref["ref_id"] == "incident:example-claims-rate-source-ambiguity"
+    assert ref["ref_type"] == "incident"
+    assert ref["source_capability"] == "forge"
+    assert ref["issue_class"] == "rate_source_ambiguity"
+    assert "expected_behavior" not in ref
+    assert "actual_behavior" not in ref
+
+
+def test_claims_rate_source_example_is_pointer_and_summary_only():
+    fixture_path = (
+        Path(__file__).parents[1]
+        / "examples"
+        / "claims"
+        / "rate-source-ambiguity-incident.yml"
+    )
+    raw = fixture_path.read_text().lower()
+    incident = load_incident(fixture_path)
+
+    forbidden_terms = [
+        "member name",
+        "patient name",
+        "date of birth",
+        "dob",
+        "ssn",
+        "837",
+        "835",
+        "turquoise live",
+        "raw claim",
+        "claim payload",
+        "rate table row",
+    ]
+
+    assert incident.observed_state["boundary_note"].startswith("Forge stores only")
+    assert all(term not in raw for term in forbidden_terms)

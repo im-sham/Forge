@@ -4,6 +4,7 @@ from forge_cli.models import (
     PROOFHOUSE_SHARED_CONTRACT_VERSION,
     FailureType,
     Incident,
+    ISSUE_CLASS_VALUES,
     Severity,
 )
 
@@ -125,6 +126,36 @@ def test_incident_ref_projection_infers_proofhouse_axes(sample_data):
     assert ref.capability_area == "governance"
     assert ref.lifecycle_stage == "use_approval"
     assert ref.issue_class == "use_approval"
+
+
+def test_claims_issue_classes_are_valid_structured_values():
+    expected = {
+        "phi_redaction_failure",
+        "missing_claim_evidence",
+        "rate_source_ambiguity",
+        "contract_rate_mismatch",
+        "allowed_amount_conflict",
+        "approval_bypass",
+        "downstream_export_mismatch",
+        "savings_recognition_dispute",
+    }
+
+    assert expected.issubset(set(ISSUE_CLASS_VALUES))
+
+
+def test_incident_ref_projection_infers_claims_issue_class_alias(sample_data):
+    data = sample_data.copy()
+    data.update(
+        {
+            "project": "proofhouse-claims",
+            "agent": "claims-review-fixture",
+            "tags": ["claims", "contract-rate-mismatch", "rate-source"],
+        }
+    )
+    incident = Incident.from_dict(data)
+    ref = incident.to_ref()
+
+    assert ref.issue_class == "contract_rate_mismatch"
 
 
 def test_incident_ref_envelope_shape(sample_data):

@@ -63,6 +63,17 @@ The first document-operations issue classes are:
 - `escalation_miss`
 - `reviewer_disagreement`
 
+Claims-specific issue classes are:
+
+- `phi_redaction_failure`
+- `missing_claim_evidence`
+- `rate_source_ambiguity`
+- `contract_rate_mismatch`
+- `allowed_amount_conflict`
+- `approval_bypass`
+- `downstream_export_mismatch`
+- `savings_recognition_dispute`
+
 Existing incident YAML can omit every structured axis and pointer field. New incidents should use these fields when the incident touches Proofhouse workflow evidence, Governance use control, or Operational Learning promotion/transform paths.
 
 ## Shared Refs This Repo Should Emit
@@ -124,5 +135,11 @@ Use tags like:
 - `use-approval`
 - `export-control`
 - `derivation-quality`
+- `claims`
+- `rate-source-ambiguity`
+- `contract-rate-mismatch`
+- `approval-bypass`
+- `savings-recognition-dispute`
 
 Tags are secondary discovery aids, not the structured contract. The sanitized document-operations stub at `examples/document-operations/redaction-miss-incident.yml` shows the preferred structured pattern.
+The sanitized claims stub at `examples/claims/rate-source-ambiguity-incident.yml` shows the same pointer/ref-summary posture for claims review failures. It must not store PHI, real claim data, source payloads, licensed rate extracts, payment payloads, source writeback state, or approval truth.
