@@ -213,7 +213,13 @@ Document-operations and Operational Learning incidents should use `issue_class` 
 
 `redaction_miss`, `rights_ambiguity`, `promotion_failure`, `export_control_failure`, `transform_failure`, `derivation_quality_failure`, `evidence_gap`, `escalation_miss`, `reviewer_disagreement`
 
-See `examples/document-operations/redaction-miss-incident.yml` for a sanitized fixture stub and `templates/playbooks/document-review-redaction-miss.md` for the seeded playbook template.
+Claims review incidents may also use:
+
+`phi_redaction_failure`, `missing_claim_evidence`, `rate_source_ambiguity`, `contract_rate_mismatch`, `allowed_amount_conflict`, `approval_bypass`, `downstream_export_mismatch`, `savings_recognition_dispute`
+
+Claims examples must stay synthetic and pointer-only: no PHI, real claim data, source payloads, licensed rate extracts, payment payloads, source writeback, export/action approval, training approval, policy-learning approval, or production automation approval belongs in Forge.
+
+See `examples/document-operations/redaction-miss-incident.yml` and `examples/claims/rate-source-ambiguity-incident.yml` for sanitized fixture stubs. See `templates/playbooks/document-review-redaction-miss.md` and `templates/playbooks/claims-rate-source-ambiguity.md` for seeded playbook templates.
 
 ## Analysis Modes
 

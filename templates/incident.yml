@@ -35,9 +35,9 @@ playbook_entry: ""
 # readiness reports, export manifests, source documents, or asset payloads.
 capability_area: ""                 # workflow_context | readiness | governance | forge | operational_learning | analyst | external_integration
 lifecycle_stage: ""                 # document_review | evidence_review | assessment | policy_decision | redaction_review | use_approval | promotion | asset_derivation | transform | internal_eval | export | escalation | runtime | handoff
-issue_class: ""                     # redaction_miss | rights_ambiguity | promotion_failure | export_control_failure | transform_failure | derivation_quality_failure | evidence_gap | escalation_miss | reviewer_disagreement | other
-workflow_archetype: ""              # e.g. document_operations
-subject_type: ""                    # e.g. document_packet
+issue_class: ""                     # redaction_miss | rights_ambiguity | promotion_failure | export_control_failure | transform_failure | derivation_quality_failure | evidence_gap | escalation_miss | reviewer_disagreement | phi_redaction_failure | missing_claim_evidence | rate_source_ambiguity | contract_rate_mismatch | allowed_amount_conflict | approval_bypass | downstream_export_mismatch | savings_recognition_dispute | other
+workflow_archetype: ""              # e.g. document_operations | claims_hybrid_high_dollar_review
+subject_type: ""                    # e.g. document_packet | claim_review_packet
 blocked_use_class: ""               # evidence_only | internal_eval | internal_training | policy_learning | external_export
 observed_state: {}                  # incident-local state summary only
 

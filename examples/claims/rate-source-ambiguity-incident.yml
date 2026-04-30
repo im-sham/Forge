@@ -1,0 +1,136 @@
+id: "example-claims-rate-source-ambiguity"
+timestamp: "2026-04-30T00:00:00Z"
+reported_by: "forge-example"
+
+project: "proofhouse-claims"
+agent: "claims-review-fixture"
+platform: "fixture"
+severity: "functional"
+failure_type: "integration_failure"
+
+expected_behavior: |
+  A synthetic high-dollar claims review should not move toward internal eval
+  or downstream handoff until the contract/rate source pointer identifies the
+  source version, review method, and licensed-access posture through owning
+  systems.
+actual_behavior: |
+  The synthetic review path had packet and line-summary refs, but the
+  contract/rate source posture was ambiguous. Forge records the recurring
+  failure pattern without storing source facts, protected data, rate source
+  extracts, or payment details.
+context: |
+  Sanitized fixture for claims-hybrid-high-dollar-review-v0. Workflow Context
+  owns workflow and evidence posture, Readiness owns suitability interpretation,
+  Governance owns use/action/export approval and audit readback, and Forge owns
+  only incident memory and recurrence learning.
+
+root_cause: "rate_source_pointer_missing_method_and_license_posture"
+immediate_fix: |
+  Keep the internal-eval and downstream handoff blocked until Workflow Context
+  supplies a reviewed rate-source evidence summary and Governance confirms the
+  applicable use/action posture.
+systemic_takeaway: |
+  Claims review incidents need structured issue classes for rate-source
+  ambiguity so recurring evidence gaps are visible without copying canonical
+  workflow, readiness, governance, or source records into Forge.
+
+tags:
+  - "claims"
+  - "rate-source-ambiguity"
+  - "contract-rate"
+  - "workflow-context"
+  - "readiness"
+  - "governance"
+related_incidents: []
+playbook_entry: "claims-rate-source-ambiguity"
+
+capability_area: "workflow_context"
+lifecycle_stage: "evidence_review"
+issue_class: "rate_source_ambiguity"
+workflow_archetype: "claims_hybrid_high_dollar_review"
+subject_type: "claim_review_packet"
+blocked_use_class: "internal_eval"
+observed_state:
+  profile_id: "claims-hybrid-high-dollar-review-v0"
+  incident_observation: "contract/rate source summary lacked reviewed method and licensed-access posture"
+  evidence_classes_involved:
+    - "claim_packet"
+    - "claim_line"
+    - "contract_rate_source"
+  launch_gate_effect: "internal_eval_and_downstream_handoff_blocked"
+  boundary_note: "Forge stores only incident classification, summaries, and refs."
+
+workflow_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "WorkflowRef"
+  canonical_owner: "workflow_context"
+  cache_policy: "summary_snapshot"
+  ref:
+    ref_id: "workflow:claims-hybrid-high-dollar-review-v0"
+    workflow_id: "claims-hybrid-high-dollar-review-v0"
+    snapshot_id: "workflow-snapshot:claims-hybrid-high-dollar-review-v0:g31"
+    summary: "Synthetic high-dollar claims review workflow profile"
+
+workflow_evidence_snapshot:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "WorkflowEvidenceSnapshot"
+  canonical_owner: "workflow_context"
+  cache_policy: "digest_snapshot"
+  ref:
+    ref_id: "workflow-evidence-snapshot:claims-hybrid-high-dollar-review-v0:g31"
+    snapshot_id: "workflow-evidence-snapshot:claims-hybrid-high-dollar-review-v0:g31"
+    digest: "sha256:claims-rate-source-fixture-placeholder"
+    summary: "Digest and summary posture for synthetic claims evidence classes"
+
+assessment_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "AssessmentRef"
+  canonical_owner: "readiness"
+  cache_policy: "summary_snapshot"
+  ref:
+    ref_id: "assessment:claims-hybrid-high-dollar-review-v0:weak-candidate"
+    assessment_type: "claims_suitability"
+    status: "weak_candidate"
+    summary: "Readiness-owned claims suitability summary flags rate-source traceability as a trust gap"
+
+policy_decision_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "PolicyDecisionRef"
+  canonical_owner: "governance"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "policy-decision:claims-rate-source-review-required:g32"
+    decision_id: "policy-decision:claims-rate-source-review-required:g32"
+    decision: "review_required"
+
+use_approval_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "UseApprovalRef"
+  canonical_owner: "governance"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "use-approval:claims-internal-eval-pending:g32"
+    approval_id: "use-approval:claims-internal-eval-pending:g32"
+    requested_use: "internal_eval"
+    approval_state: "incomplete"
+    approval_outcome: "deny"
+
+asset_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "AssetRef"
+  canonical_owner: "operational_learning"
+  cache_policy: "ref_only"
+  ref:
+    ref_id: "asset:claims-review-summary-internal-eval-candidate:g34"
+    asset_id: "asset:claims-review-summary-internal-eval-candidate:g34"
+    promotion_state: "captured"
+
+transform_ref:
+  contract_version: "proofhouse-shared-contracts/v0.1"
+  contract_name: "TransformRef"
+  canonical_owner: "operational_learning"
+  cache_policy: "digest_snapshot"
+  ref:
+    ref_id: "transform:claims-review-summary-redaction:g34"
+    transform_id: "transform:claims-review-summary-redaction:g34"
+    review_state: "review_required"

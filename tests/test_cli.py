@@ -87,3 +87,60 @@ def test_log_command_accepts_structured_axes_and_pointer_refs(tmp_path):
     assert incident.issue_class == "redaction_miss"
     assert incident.workflow_ref["ref_id"] == "workflow:document_ops_regulated_review_v0"
     assert incident.use_approval_ref["ref_id"] == "use-approval:document_ops_internal_eval:g2"
+
+
+def test_log_command_accepts_claims_issue_class(tmp_path):
+    data_root = tmp_path / "forge-data"
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "log",
+            "--project",
+            "proofhouse-claims",
+            "--agent",
+            "claims-review-fixture",
+            "--platform",
+            "codex",
+            "--severity",
+            "functional",
+            "--type",
+            "integration_failure",
+            "--capability-area",
+            "workflow_context",
+            "--lifecycle-stage",
+            "evidence_review",
+            "--issue-class",
+            "rate_source_ambiguity",
+            "--workflow-archetype",
+            "claims_hybrid_high_dollar_review",
+            "--subject-type",
+            "claim_review_packet",
+            "--blocked-use-class",
+            "internal_eval",
+            "--workflow-ref",
+            "workflow:claims-hybrid-high-dollar-review-v0",
+            "--assessment-ref",
+            "assessment:claims-hybrid-high-dollar-review-v0:weak-candidate",
+            "--playbook-entry",
+            "claims-rate-source-ambiguity",
+        ],
+        input=(
+            "Expected behavior\n"
+            "Actual behavior\n"
+            "Context\n"
+            "root-cause\n"
+            "Immediate fix\n"
+            "Systemic takeaway\n"
+            "claims,rate-source-ambiguity\n"
+            "y\n"
+        ),
+        env={"FORGE_DATA_ROOT": str(data_root)},
+    )
+
+    assert result.exit_code == 0
+    saved = next((data_root / "incidents").rglob("*.yml"))
+    incident = Incident.from_dict(yaml.safe_load(saved.read_text()))
+    assert incident.issue_class == "rate_source_ambiguity"
+    assert incident.workflow_archetype == "claims_hybrid_high_dollar_review"
+    assert incident.workflow_ref["ref_id"] == "workflow:claims-hybrid-high-dollar-review-v0"

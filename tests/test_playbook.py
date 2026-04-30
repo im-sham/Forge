@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from forge_cli.config import ForgeConfig
 
 
@@ -55,3 +57,21 @@ def test_playbook_show_partial_match(tmp_path):
     matches = [f for f in playbook_dir.glob("*.md") if name.lower() in f.stem.lower() and f.stem != "index"]
     assert len(matches) == 1
     assert matches[0].stem == "silent-fallback"
+
+
+def test_claims_rate_source_playbook_template_exists():
+    playbook_path = (
+        Path(__file__).parents[1]
+        / "templates"
+        / "playbooks"
+        / "claims-rate-source-ambiguity.md"
+    )
+
+    content = playbook_path.read_text()
+
+    assert "# Claims Rate Source Ambiguity" in content
+    assert "Workflow Context" in content
+    assert "Readiness" in content
+    assert "Governance" in content
+    assert "Forge" in content
+    assert "Do not copy raw claim" in content
