@@ -2,6 +2,8 @@ from datetime import date
 from pathlib import Path
 
 from forge_cli.incident_store import (
+    AmbiguousIncidentLookupError,
+    DuplicateIncidentError,
     find_incident,
     find_incident_path,
     generate_id,
@@ -154,6 +156,72 @@ def test_list_incidents_tag_filter(tmp_incidents_dir, sample_data):
 
     result = list_incidents(tmp_incidents_dir, tag="nonexistent-tag")
     assert len(result) == 0
+
+
+def test_list_incidents_filters_structured_axes(tmp_incidents_dir, sample_data):
+    first = sample_data.copy()
+    first.update(
+        {
+            "issue_class": "rate_source_ambiguity",
+            "capability_area": "workflow_context",
+            "lifecycle_stage": "evidence_review",
+            "workflow_archetype": "claims_hybrid_high_dollar_review",
+            "blocked_use_class": "internal_eval",
+        }
+    )
+    second = sample_data.copy()
+    second.update(
+        {
+            "id": "2026-03-04-002",
+            "issue_class": "redaction_miss",
+            "capability_area": "governance",
+            "lifecycle_stage": "redaction_review",
+            "workflow_archetype": "document_operations",
+            "blocked_use_class": "external_export",
+        }
+    )
+    save_incident(Incident.from_dict(first), tmp_incidents_dir)
+    save_incident(Incident.from_dict(second), tmp_incidents_dir)
+
+    result = list_incidents(
+        tmp_incidents_dir,
+        issue_class="rate_source_ambiguity",
+        capability_area="workflow_context",
+        lifecycle_stage="evidence_review",
+        workflow_archetype="claims_hybrid_high_dollar_review",
+        blocked_use_class="internal_eval",
+    )
+
+    assert [incident.id for incident in result] == ["2026-03-04-001"]
+
+
+def test_save_incident_rejects_duplicate_id(tmp_incidents_dir, sample_data):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+
+    try:
+        save_incident(incident, tmp_incidents_dir)
+    except DuplicateIncidentError as exc:
+        assert "2026-03-04-001" in str(exc)
+    else:
+        raise AssertionError("expected duplicate incident id to be rejected")
+
+
+def test_find_incident_path_rejects_ambiguous_suffix(tmp_incidents_dir, sample_data):
+    first = Incident.from_dict(sample_data)
+    second_data = sample_data.copy()
+    second_data["id"] = "2026-03-05-001"
+    second_data["timestamp"] = "2026-03-05T14:30:00Z"
+    save_incident(first, tmp_incidents_dir)
+    save_incident(Incident.from_dict(second_data), tmp_incidents_dir)
+
+    try:
+        find_incident_path(tmp_incidents_dir, "001")
+    except AmbiguousIncidentLookupError as exc:
+        assert "2026-03-04-001" in str(exc)
+        assert "2026-03-05-001" in str(exc)
+    else:
+        raise AssertionError("expected ambiguous suffix lookup to be rejected")
 
 
 def test_document_operations_example_loads_as_structured_stub():

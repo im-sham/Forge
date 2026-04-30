@@ -144,3 +144,122 @@ def test_log_command_accepts_claims_issue_class(tmp_path):
     assert incident.issue_class == "rate_source_ambiguity"
     assert incident.workflow_archetype == "claims_hybrid_high_dollar_review"
     assert incident.workflow_ref["ref_id"] == "workflow:claims-hybrid-high-dollar-review-v0"
+
+
+def test_log_command_rejects_unknown_workflow_archetype(tmp_path):
+    data_root = tmp_path / "forge-data"
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "log",
+            "--project",
+            "proofhouse-claims",
+            "--agent",
+            "claims-review-fixture",
+            "--platform",
+            "codex",
+            "--severity",
+            "functional",
+            "--type",
+            "integration_failure",
+            "--workflow-archetype",
+            "claims_custom_unreviewed",
+        ],
+        env={"FORGE_DATA_ROOT": str(data_root)},
+    )
+
+    assert result.exit_code == 1
+    assert "Invalid workflow_archetype" in result.output
+    assert not list((data_root / "incidents").rglob("*.yml"))
+
+
+def test_list_command_filters_structured_axes(tmp_path, sample_data):
+    data_root = tmp_path / "forge-data"
+    incidents_dir = data_root / "incidents"
+    incidents_dir.mkdir(parents=True)
+    claims_data = sample_data.copy()
+    claims_data.update(
+        {
+            "issue_class": "rate_source_ambiguity",
+            "capability_area": "workflow_context",
+            "lifecycle_stage": "evidence_review",
+            "workflow_archetype": "claims_hybrid_high_dollar_review",
+            "blocked_use_class": "internal_eval",
+        }
+    )
+    docs_data = sample_data.copy()
+    docs_data.update(
+        {
+            "id": "2026-03-04-002",
+            "issue_class": "redaction_miss",
+            "capability_area": "governance",
+            "lifecycle_stage": "redaction_review",
+            "workflow_archetype": "document_operations",
+            "blocked_use_class": "external_export",
+        }
+    )
+    save_incident(Incident.from_dict(claims_data), incidents_dir)
+    save_incident(Incident.from_dict(docs_data), incidents_dir)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "list",
+            "--issue-class",
+            "rate_source_ambiguity",
+            "--capability-area",
+            "workflow_context",
+            "--lifecycle-stage",
+            "evidence_review",
+            "--workflow-archetype",
+            "claims_hybrid_high_dollar_review",
+            "--blocked-use-class",
+            "internal_eval",
+        ],
+        env={"FORGE_DATA_ROOT": str(data_root)},
+    )
+
+    assert result.exit_code == 0
+    assert "2026-03-04-001" in result.output
+    assert "2026-03-04-002" not in result.output
+
+
+def test_log_command_accepts_subject_ref(tmp_path):
+    data_root = tmp_path / "forge-data"
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "log",
+            "--project",
+            "proofhouse-document-operations",
+            "--agent",
+            "document-review-fixture",
+            "--platform",
+            "codex",
+            "--severity",
+            "functional",
+            "--type",
+            "other",
+            "--subject-ref",
+            "subject:document-packet:synthetic-demo",
+        ],
+        input=(
+            "Expected behavior\n"
+            "Actual behavior\n"
+            "Context\n"
+            "root-cause\n"
+            "Immediate fix\n"
+            "Systemic takeaway\n"
+            "document-operations\n"
+            "y\n"
+        ),
+        env={"FORGE_DATA_ROOT": str(data_root)},
+    )
+
+    assert result.exit_code == 0
+    saved = next((data_root / "incidents").rglob("*.yml"))
+    incident = Incident.from_dict(yaml.safe_load(saved.read_text()))
+    assert incident.subject_ref["ref_id"] == "subject:document-packet:synthetic-demo"

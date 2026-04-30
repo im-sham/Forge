@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 
 from forge_cli.config import load_config
 from forge_cli.incident_store import (
+    AmbiguousIncidentLookupError,
+    DuplicateIncidentError,
     find_incident,
     generate_id,
     get_all_incidents,
@@ -23,12 +25,14 @@ from forge_cli.models import (
     PROOFHOUSE_AXIS_FIELDS,
     PROOFHOUSE_REF_FIELDS,
     USE_CLASS_VALUES,
+    WORKFLOW_ARCHETYPE_VALUES,
     FailureType,
     Incident,
     Severity,
     parse_observed_state,
     parse_pointer_value,
 )
+from forge_cli.schema_metadata import STRUCTURED_AXIS_METADATA
 
 mcp = FastMCP("Forge", json_response=True)
 
@@ -107,6 +111,7 @@ def forge_log(
     workflow_ref: str = "",
     evidence_ref: str = "",
     workflow_evidence_snapshot: str = "",
+    subject_ref: str = "",
     assessment_ref: str = "",
     policy_decision_ref: str = "",
     use_approval_ref: str = "",
@@ -142,6 +147,7 @@ def forge_log(
         workflow_ref: Optional WorkflowRef pointer as JSON object or ref id.
         evidence_ref: Optional EvidenceRef pointer as JSON object or ref id.
         workflow_evidence_snapshot: Optional WorkflowEvidenceSnapshot pointer as JSON object or id.
+        subject_ref: Optional SubjectRef pointer as JSON object or ref id.
         assessment_ref: Optional AssessmentRef pointer as JSON object or ref id.
         policy_decision_ref: Optional PolicyDecisionRef pointer as JSON object or ref id.
         use_approval_ref: Optional UseApprovalRef pointer as JSON object or ref id.
@@ -165,6 +171,7 @@ def forge_log(
         ("capability_area", capability_area, CAPABILITY_AREA_VALUES),
         ("lifecycle_stage", lifecycle_stage, LIFECYCLE_STAGE_VALUES),
         ("issue_class", issue_class, ISSUE_CLASS_VALUES),
+        ("workflow_archetype", workflow_archetype, WORKFLOW_ARCHETYPE_VALUES),
         ("blocked_use_class", blocked_use_class, USE_CLASS_VALUES),
     ]:
         if value and value not in choices:
@@ -177,6 +184,7 @@ def forge_log(
             "workflow_evidence_snapshot": parse_pointer_value(
                 workflow_evidence_snapshot, "workflow_evidence_snapshot"
             ),
+            "subject_ref": parse_pointer_value(subject_ref, "subject_ref"),
             "assessment_ref": parse_pointer_value(assessment_ref, "assessment_ref"),
             "policy_decision_ref": parse_pointer_value(policy_decision_ref, "policy_decision_ref"),
             "use_approval_ref": parse_pointer_value(use_approval_ref, "use_approval_ref"),
@@ -222,7 +230,10 @@ def forge_log(
         **pointer_refs,
     )
 
-    filepath = save_incident(incident, cfg.incidents_dir)
+    try:
+        filepath = save_incident(incident, cfg.incidents_dir)
+    except DuplicateIncidentError as e:
+        return str(e)
     return f"Incident logged: {incident_id}\nSaved to: {filepath}"
 
 
@@ -232,6 +243,11 @@ def forge_list(
     severity: str = "",
     since: str = "",
     tag: str = "",
+    issue_class: str = "",
+    capability_area: str = "",
+    lifecycle_stage: str = "",
+    workflow_archetype: str = "",
+    blocked_use_class: str = "",
     limit: int = 10,
 ) -> str:
     """List forge incidents with optional filters.
@@ -241,6 +257,11 @@ def forge_list(
         severity: Filter by severity (cosmetic, functional, safety-critical)
         since: Filter by date, showing incidents from this date onward (YYYY-MM-DD)
         tag: Filter by tag (e.g., "silent-fallback", "hallucination")
+        issue_class: Filter by structured issue class
+        capability_area: Filter by structured capability area
+        lifecycle_stage: Filter by lifecycle stage
+        workflow_archetype: Filter by workflow archetype
+        blocked_use_class: Filter by blocked use class
         limit: Maximum number of incidents to return (default 10)
     """
     cfg = load_config()
@@ -250,6 +271,11 @@ def forge_list(
         severity=severity or None,
         since=since or None,
         tag=tag or None,
+        issue_class=issue_class or None,
+        capability_area=capability_area or None,
+        lifecycle_stage=lifecycle_stage or None,
+        workflow_archetype=workflow_archetype or None,
+        blocked_use_class=blocked_use_class or None,
         limit=limit,
     )
 
@@ -260,7 +286,8 @@ def forge_list(
     for inc in incidents:
         summary = (inc.actual_behavior or "").strip().split("\n")[0][:80]
         results.append(
-            f"[{inc.id}] {inc.project}/{inc.platform} | {inc.severity} | {inc.failure_type} | {summary}"
+            f"[{inc.id}] {inc.project}/{inc.platform} | {inc.severity} | {inc.failure_type}"
+            f" | {inc.issue_class or '-'} | {summary}"
         )
 
     return f"Found {len(incidents)} incident(s):\n\n" + "\n".join(results)
@@ -274,7 +301,10 @@ def forge_show(incident_id: str) -> str:
         incident_id: Incident ID (e.g., "2026-03-04-001") or suffix (e.g., "001")
     """
     cfg = load_config()
-    incident = find_incident(cfg.incidents_dir, incident_id)
+    try:
+        incident = find_incident(cfg.incidents_dir, incident_id)
+    except AmbiguousIncidentLookupError as e:
+        return str(e)
 
     if incident is None:
         return f"No incident found matching '{incident_id}'."
@@ -290,7 +320,10 @@ def forge_incident_ref(incident_id: str) -> str:
         incident_id: Incident ID (e.g., "2026-03-04-001") or suffix (e.g., "001")
     """
     cfg = load_config()
-    incident = find_incident(cfg.incidents_dir, incident_id)
+    try:
+        incident = find_incident(cfg.incidents_dir, incident_id)
+    except AmbiguousIncidentLookupError as e:
+        return str(e)
 
     if incident is None:
         return f"No incident found matching '{incident_id}'."
@@ -302,12 +335,16 @@ def forge_incident_ref(incident_id: str) -> str:
 def forge_stats(
     project: str = "",
     severity: str = "",
+    issue_class: str = "",
+    capability_area: str = "",
 ) -> str:
     """Show aggregate statistics across forge incidents.
 
     Args:
         project: Filter by project name
         severity: Filter by severity level
+        issue_class: Filter by structured issue class
+        capability_area: Filter by capability area
     """
     from collections import Counter
 
@@ -318,6 +355,10 @@ def forge_stats(
         incidents = [i for i in incidents if i.project == project]
     if severity:
         incidents = [i for i in incidents if i.severity == severity]
+    if issue_class:
+        incidents = [i for i in incidents if i.issue_class == issue_class]
+    if capability_area:
+        incidents = [i for i in incidents if i.capability_area == capability_area]
 
     if not incidents:
         return "No incidents found."
@@ -326,6 +367,8 @@ def forge_stats(
     by_type = Counter(i.failure_type for i in incidents)
     by_project = Counter(i.project for i in incidents)
     by_platform = Counter(i.platform for i in incidents if i.platform)
+    by_issue_class = Counter(i.issue_class for i in incidents if i.issue_class)
+    by_capability_area = Counter(i.capability_area for i in incidents if i.capability_area)
     all_tags = Counter(tag for i in incidents for tag in i.tags)
 
     lines = [f"Total incidents: {len(incidents)}", ""]
@@ -345,6 +388,16 @@ def forge_stats(
     lines.append("\nBy Platform:")
     for plat, count in by_platform.most_common():
         lines.append(f"  {plat}: {count}")
+
+    if by_issue_class:
+        lines.append("\nBy Issue Class:")
+        for value, count in by_issue_class.most_common():
+            lines.append(f"  {value}: {count}")
+
+    if by_capability_area:
+        lines.append("\nBy Capability Area:")
+        for value, count in by_capability_area.most_common():
+            lines.append(f"  {value}: {count}")
 
     if all_tags:
         lines.append("\nTop Tags:")
@@ -421,22 +474,29 @@ def forge_schema() -> str:
                 "capability_area", "lifecycle_stage", "issue_class", "workflow_archetype",
                 "subject_type", "blocked_use_class", "observed_state",
                 "workflow_ref", "evidence_ref", "workflow_evidence_snapshot",
-                "assessment_ref", "policy_decision_ref", "use_approval_ref",
+                "subject_ref", "assessment_ref", "policy_decision_ref", "use_approval_ref",
                 "asset_ref", "derivation_ref", "transform_ref",
             ],
             "structured_axis_fields": PROOFHOUSE_AXIS_FIELDS,
             "structured_axis_values": {
-                "capability_area": CAPABILITY_AREA_VALUES,
-                "lifecycle_stage": LIFECYCLE_STAGE_VALUES,
-                "issue_class": ISSUE_CLASS_VALUES,
-                "blocked_use_class": USE_CLASS_VALUES,
+                field_name: metadata.values
+                for field_name, metadata in STRUCTURED_AXIS_METADATA.items()
+                if metadata.values
+            },
+            "structured_axis_metadata": {
+                field_name: {
+                    "description": metadata.description,
+                    "values": metadata.values,
+                    "required": metadata.required,
+                }
+                for field_name, metadata in STRUCTURED_AXIS_METADATA.items()
             },
             "emitted_refs": ["IncidentRef"],
             "incident_ref_fields": [
                 "incident_id", "failure_type", "severity", "capability_area",
                 "lifecycle_stage", "issue_class", "workflow_archetype", "subject_type",
                 "blocked_use_class", "workflow_ref", "evidence_ref",
-                "workflow_evidence_snapshot", "assessment_ref", "policy_decision_ref",
+                "workflow_evidence_snapshot", "subject_ref", "assessment_ref", "policy_decision_ref",
                 "use_approval_ref", "asset_ref", "derivation_ref", "transform_ref",
                 "playbook_entry",
             ],

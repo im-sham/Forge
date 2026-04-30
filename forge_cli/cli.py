@@ -24,6 +24,8 @@ from forge_cli.display import (
     print_success,
 )
 from forge_cli.incident_store import (
+    AmbiguousIncidentLookupError,
+    DuplicateIncidentError,
     find_incident,
     find_incident_path,
     generate_id,
@@ -38,6 +40,7 @@ from forge_cli.models import (
     LIFECYCLE_STAGE_VALUES,
     PROOFHOUSE_REF_FIELDS,
     USE_CLASS_VALUES,
+    WORKFLOW_ARCHETYPE_VALUES,
     FailureType,
     Incident,
     Severity,
@@ -186,6 +189,11 @@ def log(
         "--workflow-evidence-snapshot",
         help="WorkflowEvidenceSnapshot pointer as JSON object or snapshot id",
     ),
+    subject_ref: Optional[str] = typer.Option(
+        None,
+        "--subject-ref",
+        help="SubjectRef pointer as JSON object or ref id",
+    ),
     assessment_ref: Optional[str] = typer.Option(
         None,
         "--assessment-ref",
@@ -267,6 +275,9 @@ def log(
         "lifecycle_stage", lifecycle_stage, LIFECYCLE_STAGE_VALUES
     )
     issue_class = _validate_optional_choice("issue_class", issue_class, ISSUE_CLASS_VALUES)
+    workflow_archetype = _validate_optional_choice(
+        "workflow_archetype", workflow_archetype, WORKFLOW_ARCHETYPE_VALUES
+    )
     blocked_use_class = _validate_optional_choice(
         "blocked_use_class", blocked_use_class, USE_CLASS_VALUES
     )
@@ -291,6 +302,7 @@ def log(
             "workflow_ref": workflow_ref,
             "evidence_ref": evidence_ref,
             "workflow_evidence_snapshot": workflow_evidence_snapshot,
+            "subject_ref": subject_ref,
             "assessment_ref": assessment_ref,
             "policy_decision_ref": policy_decision_ref,
             "use_approval_ref": use_approval_ref,
@@ -341,7 +353,11 @@ def log(
         print_info("Incident discarded.")
         raise typer.Exit(0)
 
-    filepath = save_incident(incident, cfg.incidents_dir)
+    try:
+        filepath = save_incident(incident, cfg.incidents_dir)
+    except DuplicateIncidentError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
     print_success(f"Saved: {filepath}")
 
 
@@ -351,6 +367,19 @@ def list_cmd(
     severity: Optional[str] = typer.Option(None, "--severity", "-s", help="Filter by severity"),
     since: Optional[str] = typer.Option(None, "--since", help="Filter by date (YYYY-MM-DD)"),
     tag: Optional[str] = typer.Option(None, "--tag", "-T", help="Filter by tag"),
+    issue_class: Optional[str] = typer.Option(None, "--issue-class", help="Filter by issue class"),
+    capability_area: Optional[str] = typer.Option(
+        None, "--capability-area", help="Filter by capability area"
+    ),
+    lifecycle_stage: Optional[str] = typer.Option(
+        None, "--lifecycle-stage", help="Filter by lifecycle stage"
+    ),
+    workflow_archetype: Optional[str] = typer.Option(
+        None, "--workflow-archetype", help="Filter by workflow archetype"
+    ),
+    blocked_use_class: Optional[str] = typer.Option(
+        None, "--blocked-use-class", help="Filter by blocked use class"
+    ),
     limit: int = typer.Option(10, "--limit", "-n", help="Max incidents to show"),
 ) -> None:
     """List recent incidents with optional filters."""
@@ -366,6 +395,11 @@ def list_cmd(
         severity=severity,
         since=since,
         tag=tag,
+        issue_class=issue_class,
+        capability_area=capability_area,
+        lifecycle_stage=lifecycle_stage,
+        workflow_archetype=workflow_archetype,
+        blocked_use_class=blocked_use_class,
         limit=limit,
     )
 
@@ -383,7 +417,11 @@ def show(
         print_error(str(e))
         raise typer.Exit(1)
 
-    incident = find_incident(cfg.incidents_dir, incident_id)
+    try:
+        incident = find_incident(cfg.incidents_dir, incident_id)
+    except AmbiguousIncidentLookupError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
     if incident is None:
         print_error(f"No incident found matching '{incident_id}'.")
         raise typer.Exit(1)
@@ -403,7 +441,11 @@ def ref_cmd(
         print_error(str(e))
         raise typer.Exit(1)
 
-    incident = find_incident(cfg.incidents_dir, incident_id)
+    try:
+        incident = find_incident(cfg.incidents_dir, incident_id)
+    except AmbiguousIncidentLookupError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
     if incident is None:
         print_error(f"No incident found matching '{incident_id}'.")
         raise typer.Exit(1)
@@ -423,7 +465,11 @@ def edit(
         print_error(str(e))
         raise typer.Exit(1)
 
-    path = find_incident_path(cfg.incidents_dir, incident_id)
+    try:
+        path = find_incident_path(cfg.incidents_dir, incident_id)
+    except AmbiguousIncidentLookupError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
     if path is None:
         print_error(f"No incident found matching '{incident_id}'.")
         raise typer.Exit(1)
@@ -549,6 +595,19 @@ def stats(
     project: Optional[str] = typer.Option(None, "--project", "-p", help="Filter by project"),
     severity: Optional[str] = typer.Option(None, "--severity", "-s", help="Filter by severity"),
     since: Optional[str] = typer.Option(None, "--since", help="Filter by date (YYYY-MM-DD)"),
+    issue_class: Optional[str] = typer.Option(None, "--issue-class", help="Filter by issue class"),
+    capability_area: Optional[str] = typer.Option(
+        None, "--capability-area", help="Filter by capability area"
+    ),
+    lifecycle_stage: Optional[str] = typer.Option(
+        None, "--lifecycle-stage", help="Filter by lifecycle stage"
+    ),
+    workflow_archetype: Optional[str] = typer.Option(
+        None, "--workflow-archetype", help="Filter by workflow archetype"
+    ),
+    blocked_use_class: Optional[str] = typer.Option(
+        None, "--blocked-use-class", help="Filter by blocked use class"
+    ),
 ) -> None:
     """Show summary statistics across all incidents."""
     try:
@@ -565,6 +624,16 @@ def stats(
         incidents = [i for i in incidents if i.severity == severity]
     if since:
         incidents = [i for i in incidents if i.timestamp >= since]
+    if issue_class:
+        incidents = [i for i in incidents if i.issue_class == issue_class]
+    if capability_area:
+        incidents = [i for i in incidents if i.capability_area == capability_area]
+    if lifecycle_stage:
+        incidents = [i for i in incidents if i.lifecycle_stage == lifecycle_stage]
+    if workflow_archetype:
+        incidents = [i for i in incidents if i.workflow_archetype == workflow_archetype]
+    if blocked_use_class:
+        incidents = [i for i in incidents if i.blocked_use_class == blocked_use_class]
 
     display_stats(incidents)
 

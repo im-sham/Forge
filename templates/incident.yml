@@ -46,6 +46,7 @@ observed_state: {}                  # incident-local state summary only
 workflow_ref: null
 evidence_ref: null
 workflow_evidence_snapshot: null
+subject_ref: null
 assessment_ref: null
 policy_decision_ref: null
 use_approval_ref: null

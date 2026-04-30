@@ -89,7 +89,7 @@ You can also set an `organization_name` in `config.yaml` or `config.local.yaml` 
 | Command | Description |
 |---------|-------------|
 | `forge log` | Log a new incident with interactive prompts |
-| `forge list` | List incidents with `--project`, `--severity`, `--since`, `--tag`, and `--limit` filters |
+| `forge list` | List incidents with `--project`, `--severity`, `--since`, `--tag`, structured-axis, and `--limit` filters |
 | `forge show <id>` | Show full details of one incident; suffix matches like `forge show 001` work |
 | `forge ref <id>` | Print a Proofhouse `IncidentRef` compatibility projection as JSON |
 | `forge edit <id>` | Open an incident in your editor |
@@ -176,7 +176,7 @@ Each incident is a YAML file in `incidents/YYYY-MM/` with structured fields cove
 - resolution: `root_cause`, `immediate_fix`, `systemic_takeaway`
 - metadata: `tags`, `related_incidents`, `playbook_entry`
 - optional Proofhouse axes: `capability_area`, `lifecycle_stage`, `issue_class`, `workflow_archetype`, `subject_type`, `blocked_use_class`, `observed_state`
-- optional pointer refs: `workflow_ref`, `evidence_ref`, `workflow_evidence_snapshot`, `assessment_ref`, `policy_decision_ref`, `use_approval_ref`, `asset_ref`, `derivation_ref`, `transform_ref`
+- optional pointer refs: `workflow_ref`, `evidence_ref`, `workflow_evidence_snapshot`, `subject_ref`, `assessment_ref`, `policy_decision_ref`, `use_approval_ref`, `asset_ref`, `derivation_ref`, `transform_ref`
 
 Existing incident YAML remains compatible: all Proofhouse axes and pointer refs are optional. Older files that only contain the original classification/event/resolution/metadata fields still load, list, analyze, and emit a compatibility `IncidentRef`.
 
@@ -185,11 +185,13 @@ Existing incident YAML remains compatible: all Proofhouse axes and pointer refs 
 When an incident relates to Proofhouse workflow evidence or Operational Learning, keep Forge records pointer-based:
 
 - use structured axes for document-operations and Operational Learning failure classes
-- use pointer ref fields for `WorkflowRef`, `EvidenceRef` / `WorkflowEvidenceSnapshot`, `AssessmentRef`, `PolicyDecisionRef`, `UseApprovalRef`, and Operational Learning `AssetRef`, `DerivationRef`, or `TransformRef` placeholders
+- use pointer ref fields for `WorkflowRef`, `EvidenceRef` / `WorkflowEvidenceSnapshot`, `SubjectRef`, `AssessmentRef`, `PolicyDecisionRef`, `UseApprovalRef`, and Operational Learning `AssetRef`, `DerivationRef`, or `TransformRef` placeholders
 - use `context` only for short human-readable summaries
 - use `tags` as secondary discovery aids, not as the only structure
 - use `related_incidents` only for Forge incident IDs
 - do not paste raw customer data, regulated personal data, credentials, or training/eval source material into an incident
+
+Pointer refs and `observed_state` are summary/ref-only fields. Forge rejects obvious raw or sensitive payload keys such as `payload`, `raw_payload`, `document_text`, `claim_text`, `phi`, `ssn`, and `dob`; this is boundary hygiene, not a substitute for upstream redaction.
 
 Governance remains the approval and export-control plane. Forge may record that a handoff or approval issue occurred, but the authoritative rights, redaction, use-approval, manifest, and export state lives outside Forge.
 

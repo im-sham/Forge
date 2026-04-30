@@ -8,7 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from forge_cli.models import Incident
+from forge_cli.models import PROOFHOUSE_REF_FIELDS, Incident
 
 console = Console()
 
@@ -140,21 +140,7 @@ def display_incident_detail(incident: Incident) -> None:
         lines.append("[cyan bold]Observed state:[/]")
         for key, value in incident.observed_state.items():
             lines.append(f"  {key}: {value}")
-    present_refs = [
-        field_name
-        for field_name in [
-            "workflow_ref",
-            "evidence_ref",
-            "workflow_evidence_snapshot",
-            "assessment_ref",
-            "policy_decision_ref",
-            "use_approval_ref",
-            "asset_ref",
-            "derivation_ref",
-            "transform_ref",
-        ]
-        if getattr(incident, field_name)
-    ]
+    present_refs = [field_name for field_name in PROOFHOUSE_REF_FIELDS if getattr(incident, field_name)]
     if present_refs:
         lines.append("")
         lines.append(f"[cyan bold]Pointer refs:[/]    {', '.join(present_refs)}")
@@ -201,6 +187,8 @@ def display_stats(incidents: list[Incident]) -> None:
     by_project = Counter(i.project for i in incidents)
     by_platform = Counter(i.platform for i in incidents if i.platform)
     all_tags = Counter(tag for i in incidents for tag in i.tags)
+    by_issue_class = Counter(i.issue_class for i in incidents if i.issue_class)
+    by_capability_area = Counter(i.capability_area for i in incidents if i.capability_area)
 
     # Date range
     timestamps = sorted(i.timestamp for i in incidents if i.timestamp)
@@ -234,6 +222,12 @@ def display_stats(incidents: list[Incident]) -> None:
     plat_table = _counter_table("By Platform", by_platform, color="dim cyan")
 
     console.print(Columns([type_table, plat_table], equal=True))
+
+    if by_issue_class or by_capability_area:
+        console.print()
+        issue_table = _counter_table("By Issue Class", by_issue_class, color="yellow")
+        capability_table = _counter_table("By Capability Area", by_capability_area, color="cyan")
+        console.print(Columns([issue_table, capability_table], equal=True))
 
     # Top tags
     if all_tags:

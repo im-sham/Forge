@@ -1,12 +1,18 @@
+import pytest
+
 from forge_cli.models import (
     FORGE_DEFAULT_ENVIRONMENT_ID,
     FORGE_UNSCOPED_ORGANIZATION_ID,
+    PROOFHOUSE_REF_FIELDS,
     PROOFHOUSE_SHARED_CONTRACT_VERSION,
     FailureType,
     Incident,
     ISSUE_CLASS_VALUES,
     Severity,
+    parse_observed_state,
+    parse_pointer_value,
 )
+from forge_cli.schema_metadata import STRUCTURED_AXIS_METADATA
 
 
 def test_severity_enum_values():
@@ -141,6 +147,78 @@ def test_claims_issue_classes_are_valid_structured_values():
     }
 
     assert expected.issubset(set(ISSUE_CLASS_VALUES))
+
+
+def test_structured_axis_metadata_is_single_source_for_claims_axes():
+    assert STRUCTURED_AXIS_METADATA["issue_class"].values is ISSUE_CLASS_VALUES
+    assert STRUCTURED_AXIS_METADATA["capability_area"].description
+    assert STRUCTURED_AXIS_METADATA["workflow_archetype"].description
+    assert STRUCTURED_AXIS_METADATA["blocked_use_class"].values
+
+
+def test_subject_ref_is_supported_as_pointer_only(sample_data):
+    data = sample_data.copy()
+    data["subject_ref"] = "subject:document-packet:synthetic-demo"
+
+    incident = Incident.from_dict(data)
+    ref = incident.to_ref()
+
+    assert "subject_ref" in PROOFHOUSE_REF_FIELDS
+    assert incident.subject_ref["ref_id"] == "subject:document-packet:synthetic-demo"
+    assert incident.subject_ref["cache_policy"] == "ref_only"
+    assert ref.subject_ref["ref_id"] == "subject:document-packet:synthetic-demo"
+
+
+def test_pointer_refs_reject_obvious_raw_payload_keys():
+    try:
+        parse_pointer_value({"ref_id": "workflow:demo", "payload": {"claim": "raw"}}, "workflow_ref")
+    except ValueError as exc:
+        assert "payload" in str(exc)
+    else:
+        raise AssertionError("expected raw payload key to be rejected")
+
+
+def test_pointer_refs_allow_digest_metadata():
+    parsed = parse_pointer_value(
+        {"ref_id": "workflow:demo", "payload_digest": "sha256:placeholder"},
+        "workflow_ref",
+    )
+
+    assert parsed["payload_digest"] == "sha256:placeholder"
+
+
+def test_observed_state_rejects_obvious_sensitive_keys():
+    try:
+        parse_observed_state({"state": "needs_review", "claim_text": "raw claim body"})
+    except ValueError as exc:
+        assert "claim_text" in str(exc)
+    else:
+        raise AssertionError("expected raw observed_state key to be rejected")
+
+
+def test_observed_state_rejects_camel_case_raw_payload_keys():
+    for raw_key in [
+        "rawPayload",
+        "claimText",
+        "documentText",
+        "dateOfBirth",
+        "patientName",
+        "memberName",
+    ]:
+        with pytest.raises(ValueError, match=raw_key):
+            parse_observed_state({raw_key: "raw value"})
+
+
+def test_observed_state_allows_boundary_safe_phi_status_keys():
+    parsed = parse_observed_state(
+        {
+            "phi_redaction_status": "passed",
+            "phi_boundary_state": "summary_only",
+            "phi_packet_digest": "sha256:placeholder",
+        }
+    )
+
+    assert parsed["phi_redaction_status"] == "passed"
 
 
 def test_incident_ref_projection_infers_claims_issue_class_alias(sample_data):

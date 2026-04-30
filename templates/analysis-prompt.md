@@ -18,7 +18,7 @@ For document-operations or Operational Learning incidents, prefer the structured
 - `subject_type`
 - `blocked_use_class`
 
-Expected document-operations issue classes include `redaction_miss`, `rights_ambiguity`, `promotion_failure`, `export_control_failure`, `transform_failure`, `derivation_quality_failure`, `evidence_gap`, `escalation_miss`, and `reviewer_disagreement`. Treat `workflow_ref`, `evidence_ref`, `workflow_evidence_snapshot`, `assessment_ref`, `policy_decision_ref`, `use_approval_ref`, `asset_ref`, `derivation_ref`, and `transform_ref` as pointer refs only.
+Expected document-operations issue classes include `redaction_miss`, `rights_ambiguity`, `promotion_failure`, `export_control_failure`, `transform_failure`, `derivation_quality_failure`, `evidence_gap`, `escalation_miss`, and `reviewer_disagreement`. Treat `workflow_ref`, `evidence_ref`, `workflow_evidence_snapshot`, `subject_ref`, `assessment_ref`, `policy_decision_ref`, `use_approval_ref`, `asset_ref`, `derivation_ref`, and `transform_ref` as pointer refs only.
 
 ## Incident Data
 
