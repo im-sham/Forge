@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+import os
 from pathlib import Path
+import tempfile
 
 import yaml
 
@@ -31,6 +33,14 @@ _BlockDumper.add_representer(dict, _ordered_dict_representer)
 
 
 # --- ID generation ---
+
+
+class DuplicateIncidentError(FileExistsError):
+    """Raised when saving would overwrite an existing incident file."""
+
+
+class AmbiguousIncidentLookupError(LookupError):
+    """Raised when a suffix lookup matches multiple incidents."""
 
 
 def generate_id(incidents_dir: Path, incident_date: date | None = None) -> str:
@@ -63,8 +73,29 @@ def save_incident(incident: Incident, incidents_dir: Path) -> Path:
 
     data = incident.to_dict()
 
-    with open(filepath, "w") as f:
-        yaml.dump(data, f, Dumper=_BlockDumper, default_flow_style=False, allow_unicode=True)
+    if filepath.exists():
+        raise DuplicateIncidentError(f"Incident id already exists: {incident.id}")
+
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            dir=month_dir,
+            prefix=f".{incident.id}.",
+            suffix=".tmp",
+            delete=False,
+        ) as f:
+            tmp_path = Path(f.name)
+            yaml.dump(data, f, Dumper=_BlockDumper, default_flow_style=False, allow_unicode=True)
+            f.flush()
+            os.fsync(f.fileno())
+        try:
+            os.link(tmp_path, filepath)
+        except FileExistsError as exc:
+            raise DuplicateIncidentError(f"Incident id already exists: {incident.id}") from exc
+    finally:
+        if tmp_path is not None and tmp_path.exists():
+            tmp_path.unlink()
 
     return filepath
 
@@ -82,6 +113,11 @@ def list_incidents(
     severity: str | None = None,
     since: str | None = None,
     tag: str | None = None,
+    issue_class: str | None = None,
+    capability_area: str | None = None,
+    lifecycle_stage: str | None = None,
+    workflow_archetype: str | None = None,
+    blocked_use_class: str | None = None,
     limit: int = 10,
 ) -> list[Incident]:
     """List incidents with optional filtering, most recent first."""
@@ -103,6 +139,16 @@ def list_incidents(
             continue
         if tag and tag not in incident.tags:
             continue
+        if issue_class and incident.issue_class != issue_class:
+            continue
+        if capability_area and incident.capability_area != capability_area:
+            continue
+        if lifecycle_stage and incident.lifecycle_stage != lifecycle_stage:
+            continue
+        if workflow_archetype and incident.workflow_archetype != workflow_archetype:
+            continue
+        if blocked_use_class and incident.blocked_use_class != blocked_use_class:
+            continue
 
         incidents.append(incident)
         if len(incidents) >= limit:
@@ -120,9 +166,12 @@ def find_incident_path(incidents_dir: Path, incident_id: str) -> Path | None:
         if exact_path.exists():
             return exact_path
 
-    for filepath in incidents_dir.rglob("*.yml"):
-        if incident_id in filepath.stem:
-            return filepath
+    matches = sorted(filepath for filepath in incidents_dir.rglob("*.yml") if filepath.stem.endswith(incident_id))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        ids = ", ".join(match.stem for match in matches)
+        raise AmbiguousIncidentLookupError(f"Ambiguous incident id '{incident_id}'. Matches: {ids}")
 
     return None
 

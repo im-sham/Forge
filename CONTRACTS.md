@@ -96,6 +96,7 @@ Projection fields:
 - `workflow_ref`
 - `evidence_ref`
 - `workflow_evidence_snapshot`
+- `subject_ref`
 - `assessment_ref`
 - `policy_decision_ref`
 - `use_approval_ref`

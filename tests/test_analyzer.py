@@ -39,6 +39,13 @@ def test_render_analysis_prompt_substitutes_incident_yaml():
     assert rendered.endswith("Footer")
 
 
+def test_analysis_prompt_mentions_subject_ref_boundary():
+    prompt = Path("templates/analysis-prompt.md").read_text(encoding="utf-8")
+
+    assert "subject_ref" in prompt
+    assert "pointer refs only" in prompt
+
+
 def test_next_analysis_output_path_uses_sequence_when_needed(tmp_path):
     first = next_analysis_output_path(tmp_path, date_prefix="2026-03-28")
     assert first == tmp_path / "2026-03-28-analysis.md"

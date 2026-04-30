@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any
+
+from forge_cli import schema_metadata
 
 
 PROOFHOUSE_SHARED_CONTRACT_VERSION = "proofhouse-shared-contracts/v0.1"
@@ -11,10 +14,17 @@ FORGE_PRODUCER_SYSTEM = "proofhouse-forge"
 FORGE_UNSCOPED_ORGANIZATION_ID = "unscoped"
 FORGE_DEFAULT_ENVIRONMENT_ID = "default"
 
+CAPABILITY_AREA_VALUES = schema_metadata.CAPABILITY_AREA_VALUES
+ISSUE_CLASS_VALUES = schema_metadata.ISSUE_CLASS_VALUES
+LIFECYCLE_STAGE_VALUES = schema_metadata.LIFECYCLE_STAGE_VALUES
+WORKFLOW_ARCHETYPE_VALUES = schema_metadata.WORKFLOW_ARCHETYPE_VALUES
+USE_CLASS_VALUES = schema_metadata.USE_CLASS_VALUES
+
 PROOFHOUSE_REF_FIELDS = [
     "workflow_ref",
     "evidence_ref",
     "workflow_evidence_snapshot",
+    "subject_ref",
     "assessment_ref",
     "policy_decision_ref",
     "use_approval_ref",
@@ -40,72 +50,11 @@ OPTIONAL_INCIDENT_FIELD_ORDER = [
     *PROOFHOUSE_REF_FIELDS,
 ]
 
-CAPABILITY_AREA_VALUES = [
-    "workflow_context",
-    "readiness",
-    "governance",
-    "forge",
-    "operational_learning",
-    "analyst",
-    "external_integration",
-]
-
-LIFECYCLE_STAGE_VALUES = [
-    "capture",
-    "document_review",
-    "evidence_review",
-    "assessment",
-    "policy_decision",
-    "redaction_review",
-    "use_approval",
-    "promotion",
-    "asset_derivation",
-    "transform",
-    "internal_eval",
-    "internal_training",
-    "export",
-    "escalation",
-    "runtime",
-    "handoff",
-]
-
-ISSUE_CLASS_VALUES = [
-    "redaction_miss",
-    "rights_ambiguity",
-    "promotion_failure",
-    "export_control_failure",
-    "transform_failure",
-    "derivation_quality_failure",
-    "evidence_gap",
-    "escalation_miss",
-    "reviewer_disagreement",
-    "phi_redaction_failure",
-    "missing_claim_evidence",
-    "rate_source_ambiguity",
-    "contract_rate_mismatch",
-    "allowed_amount_conflict",
-    "approval_bypass",
-    "downstream_export_mismatch",
-    "savings_recognition_dispute",
-    "use_approval",
-    "provenance_gap",
-    "readiness_gap",
-    "workflow_truth",
-    "other",
-]
-
-USE_CLASS_VALUES = [
-    "evidence_only",
-    "internal_eval",
-    "internal_training",
-    "policy_learning",
-    "external_export",
-]
-
 REF_TYPE_BY_FIELD = {
     "workflow_ref": "workflow",
     "evidence_ref": "evidence",
     "workflow_evidence_snapshot": "workflow_evidence_snapshot",
+    "subject_ref": "subject",
     "assessment_ref": "assessment",
     "policy_decision_ref": "policy_decision",
     "use_approval_ref": "use_approval",
@@ -113,6 +62,58 @@ REF_TYPE_BY_FIELD = {
     "derivation_ref": "derivation",
     "transform_ref": "transform",
 }
+
+FORBIDDEN_SUMMARY_KEY_PARTS = {
+    "payload",
+    "raw_payload",
+    "source_payload",
+    "document_text",
+    "claim_text",
+    "claim_payload",
+    "raw_claim",
+    "raw_claim_text",
+    "source_document_text",
+    "phi",
+    "ssn",
+    "dob",
+    "date_of_birth",
+    "member_name",
+    "patient_name",
+    "customer_data",
+    "rate_table_row",
+    "payment_payload",
+}
+
+SENSITIVE_SUMMARY_KEY_PREFIXES = (
+    "phi_",
+    "ssn_",
+    "dob_",
+    "date_of_birth_",
+    "member_name_",
+    "patient_name_",
+)
+
+SAFE_SUMMARY_KEY_SUFFIXES = (
+    "_class",
+    "_decision",
+    "_digest",
+    "_id",
+    "_label",
+    "_mode",
+    "_owner",
+    "_policy",
+    "_present",
+    "_ref",
+    "_ref_id",
+    "_required",
+    "_scope",
+    "_state",
+    "_status",
+    "_summary",
+    "_type",
+)
+
+CAMEL_CASE_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
 CAPABILITY_AREA_ALIASES = [
     (
@@ -284,11 +285,41 @@ def _has_value(value: Any) -> bool:
     return True
 
 
+def _normalize_key(value: Any) -> str:
+    normalized = CAMEL_CASE_BOUNDARY.sub("_", str(value).strip())
+    return normalized.lower().replace("-", "_").replace(" ", "_")
+
+
+def _is_forbidden_summary_key(normalized: str) -> bool:
+    if normalized in FORBIDDEN_SUMMARY_KEY_PARTS:
+        return True
+    if normalized.startswith(SENSITIVE_SUMMARY_KEY_PREFIXES):
+        return not normalized.endswith(SAFE_SUMMARY_KEY_SUFFIXES)
+    return False
+
+
+def _validate_summary_only_mapping(value: dict[str, Any], field_name: str) -> None:
+    for key, nested_value in value.items():
+        normalized = _normalize_key(key)
+        if _is_forbidden_summary_key(normalized):
+            raise ValueError(
+                f"{field_name} contains forbidden raw/sensitive payload key '{key}'. "
+                "Store pointer refs, ids, digests, labels, or short summaries only."
+            )
+        if isinstance(nested_value, dict):
+            _validate_summary_only_mapping(nested_value, field_name)
+        elif isinstance(nested_value, list):
+            for item in nested_value:
+                if isinstance(item, dict):
+                    _validate_summary_only_mapping(item, field_name)
+
+
 def parse_pointer_value(value: Any, field_name: str) -> dict[str, Any] | None:
     """Parse a pointer ref from YAML data or CLI/MCP text input."""
     if value is None:
         return None
     if isinstance(value, dict):
+        _validate_summary_only_mapping(value, field_name)
         return value or None
     if isinstance(value, str):
         stripped = value.strip()
@@ -298,6 +329,7 @@ def parse_pointer_value(value: Any, field_name: str) -> dict[str, Any] | None:
             parsed = json.loads(stripped)
             if not isinstance(parsed, dict):
                 raise ValueError(f"{field_name} must be a JSON object when JSON is supplied")
+            _validate_summary_only_mapping(parsed, field_name)
             return parsed
         return {
             "ref_id": stripped,
@@ -312,6 +344,7 @@ def parse_observed_state(value: Any) -> dict[str, Any] | None:
     if value is None:
         return None
     if isinstance(value, dict):
+        _validate_summary_only_mapping(value, "observed_state")
         return value or None
     if isinstance(value, str):
         stripped = value.strip()
@@ -321,6 +354,7 @@ def parse_observed_state(value: Any) -> dict[str, Any] | None:
             parsed = json.loads(stripped)
             if not isinstance(parsed, dict):
                 raise ValueError("observed_state must be a JSON object when JSON is supplied")
+            _validate_summary_only_mapping(parsed, "observed_state")
             return parsed
         return {"summary": stripped}
     raise TypeError("observed_state must be a mapping, JSON object string, string summary, or empty")
@@ -381,6 +415,7 @@ class IncidentRef:
     workflow_ref: dict[str, Any] | None = None
     evidence_ref: dict[str, Any] | None = None
     workflow_evidence_snapshot: dict[str, Any] | None = None
+    subject_ref: dict[str, Any] | None = None
     assessment_ref: dict[str, Any] | None = None
     policy_decision_ref: dict[str, Any] | None = None
     use_approval_ref: dict[str, Any] | None = None
@@ -421,6 +456,7 @@ class Incident:
     workflow_ref: dict[str, Any] | None = None
     evidence_ref: dict[str, Any] | None = None
     workflow_evidence_snapshot: dict[str, Any] | None = None
+    subject_ref: dict[str, Any] | None = None
     assessment_ref: dict[str, Any] | None = None
     policy_decision_ref: dict[str, Any] | None = None
     use_approval_ref: dict[str, Any] | None = None
@@ -480,6 +516,7 @@ class Incident:
             workflow_evidence_snapshot=parse_pointer_value(
                 data.get("workflow_evidence_snapshot"), "workflow_evidence_snapshot"
             ),
+            subject_ref=parse_pointer_value(data.get("subject_ref"), "subject_ref"),
             assessment_ref=parse_pointer_value(data.get("assessment_ref"), "assessment_ref"),
             policy_decision_ref=parse_pointer_value(
                 data.get("policy_decision_ref"), "policy_decision_ref"
@@ -537,6 +574,7 @@ def build_incident_ref(incident: Incident) -> IncidentRef:
         workflow_ref=incident.workflow_ref,
         evidence_ref=incident.evidence_ref,
         workflow_evidence_snapshot=incident.workflow_evidence_snapshot,
+        subject_ref=incident.subject_ref,
         assessment_ref=incident.assessment_ref,
         policy_decision_ref=incident.policy_decision_ref,
         use_approval_ref=incident.use_approval_ref,
