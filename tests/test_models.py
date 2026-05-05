@@ -221,6 +221,44 @@ def test_observed_state_allows_boundary_safe_phi_status_keys():
     assert parsed["phi_redaction_status"] == "passed"
 
 
+def test_incident_core_free_text_rejects_raw_payload_labels(sample_data):
+    data = sample_data.copy()
+    data["actual_behavior"] = "The handoff included raw_payload: {\"claim_id\": \"synthetic\"}"
+
+    with pytest.raises(ValueError, match="actual_behavior.*raw_payload"):
+        Incident.from_dict(data)
+
+
+def test_incident_core_free_text_rejects_payload_shaped_json(sample_data):
+    data = sample_data.copy()
+    data["context"] = '{"document_text": "raw source text should not live in Forge"}'
+
+    with pytest.raises(ValueError, match="context.*document_text"):
+        Incident.from_dict(data)
+
+
+def test_incident_core_free_text_allows_synthetic_ref_only_summary(sample_data):
+    data = sample_data.copy()
+    data.update(
+        {
+            "expected_behavior": "Reviewer should receive only summary refs for the synthetic packet.",
+            "actual_behavior": "The demo handoff omitted a redaction review status summary.",
+            "context": "Synthetic fixture ref workflow:document_ops_regulated_review_v0 was used.",
+            "root_cause": "Fixture mapping did not include the summary-only review outcome.",
+            "immediate_fix": "Add the missing status summary and keep source text out of Forge.",
+            "systemic_takeaway": "Incident records should preserve ids, digests, and short summaries only.",
+        }
+    )
+
+    incident = Incident.from_dict(data)
+    result = incident.to_dict()
+    ref = incident.to_ref().to_dict()
+
+    assert result["context"].startswith("Synthetic fixture ref")
+    assert "expected_behavior" not in ref
+    assert "actual_behavior" not in ref
+
+
 def test_incident_ref_projection_infers_claims_issue_class_alias(sample_data):
     data = sample_data.copy()
     data.update(

@@ -123,6 +123,25 @@ def test_forge_log_rejects_raw_payload_pointer_keys(tmp_path, monkeypatch):
     assert not list((data_root / "incidents").rglob("*.yml"))
 
 
+def test_forge_log_rejects_sensitive_core_free_text(tmp_path, monkeypatch):
+    data_root = tmp_path / "forge-data"
+    monkeypatch.setenv("FORGE_DATA_ROOT", str(data_root))
+
+    result = forge_log(
+        project="proofhouse-claims",
+        agent="claims-review-fixture",
+        severity="functional",
+        failure_type="safety_boundary_violation",
+        expected_behavior="Expected behavior",
+        actual_behavior="Actual behavior",
+        context='{"patient_name": "Synthetic Patient"}',
+    )
+
+    assert "context" in result
+    assert "patient_name" in result
+    assert not list((data_root / "incidents").rglob("*.yml"))
+
+
 def test_forge_log_rejects_unknown_workflow_archetype(tmp_path, monkeypatch):
     data_root = tmp_path / "forge-data"
     monkeypatch.setenv("FORGE_DATA_ROOT", str(data_root))

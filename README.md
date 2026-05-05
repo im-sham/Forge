@@ -191,7 +191,7 @@ When an incident relates to Proofhouse workflow evidence or Operational Learning
 - use `related_incidents` only for Forge incident IDs
 - do not paste raw customer data, regulated personal data, credentials, or training/eval source material into an incident
 
-Pointer refs and `observed_state` are summary/ref-only fields. Forge rejects obvious raw or sensitive payload keys such as `payload`, `raw_payload`, `document_text`, `claim_text`, `phi`, `ssn`, and `dob`; this is boundary hygiene, not a substitute for upstream redaction.
+Pointer refs, `observed_state`, and core incident free-text fields are summary/ref-only. Forge rejects obvious raw or sensitive payload indicators in `expected_behavior`, `actual_behavior`, `context`, `root_cause`, `immediate_fix`, and `systemic_takeaway`, including payload-shaped JSON and labels/keys such as `payload`, `raw_payload`, `source_payload`, `document_text`, `claim_text`, `claim_payload`, `payment_payload`, `phi`, `ssn`, `dob`, `member_id`, `patient_name`, `authorization`, `api_key`, `secret`, and credential/token variants. This is boundary hygiene, not a substitute for upstream redaction or a DLP/PHI classifier.
 
 Governance remains the approval and export-control plane. Forge may record that a handoff or approval issue occurred, but the authoritative rights, redaction, use-approval, manifest, and export state lives outside Forge.
 
