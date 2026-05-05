@@ -202,33 +202,36 @@ def forge_log(
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
     related_list = [r.strip() for r in related_incidents.split(",") if r.strip()] if related_incidents else []
 
-    incident = Incident(
-        id=incident_id,
-        timestamp=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        reported_by=reported_by or cfg.default_reporter,
-        project=project,
-        agent=agent,
-        platform=platform,
-        severity=severity,
-        failure_type=failure_type,
-        expected_behavior=expected_behavior,
-        actual_behavior=actual_behavior,
-        context=context,
-        root_cause=root_cause,
-        immediate_fix=immediate_fix,
-        systemic_takeaway=systemic_takeaway,
-        tags=tag_list,
-        related_incidents=related_list,
-        playbook_entry=playbook_entry,
-        capability_area=capability_area,
-        lifecycle_stage=lifecycle_stage,
-        issue_class=issue_class,
-        workflow_archetype=workflow_archetype,
-        subject_type=subject_type,
-        blocked_use_class=blocked_use_class,
-        observed_state=observed,
-        **pointer_refs,
-    )
+    try:
+        incident = Incident(
+            id=incident_id,
+            timestamp=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            reported_by=reported_by or cfg.default_reporter,
+            project=project,
+            agent=agent,
+            platform=platform,
+            severity=severity,
+            failure_type=failure_type,
+            expected_behavior=expected_behavior,
+            actual_behavior=actual_behavior,
+            context=context,
+            root_cause=root_cause,
+            immediate_fix=immediate_fix,
+            systemic_takeaway=systemic_takeaway,
+            tags=tag_list,
+            related_incidents=related_list,
+            playbook_entry=playbook_entry,
+            capability_area=capability_area,
+            lifecycle_stage=lifecycle_stage,
+            issue_class=issue_class,
+            workflow_archetype=workflow_archetype,
+            subject_type=subject_type,
+            blocked_use_class=blocked_use_class,
+            observed_state=observed,
+            **pointer_refs,
+        )
+    except ValueError as e:
+        return str(e)
 
     try:
         filepath = save_incident(incident, cfg.incidents_dir)

@@ -263,3 +263,40 @@ def test_log_command_accepts_subject_ref(tmp_path):
     saved = next((data_root / "incidents").rglob("*.yml"))
     incident = Incident.from_dict(yaml.safe_load(saved.read_text()))
     assert incident.subject_ref["ref_id"] == "subject:document-packet:synthetic-demo"
+
+
+def test_log_command_rejects_sensitive_core_free_text(tmp_path):
+    data_root = tmp_path / "forge-data"
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "log",
+            "--project",
+            "proofhouse-claims",
+            "--agent",
+            "claims-review-fixture",
+            "--platform",
+            "codex",
+            "--severity",
+            "functional",
+            "--type",
+            "safety_boundary_violation",
+        ],
+        input=(
+            "Expected behavior\n"
+            "Actual behavior included source_payload: {\"claim_id\": \"synthetic\"}\n"
+            "Context\n"
+            "root-cause\n"
+            "Immediate fix\n"
+            "Systemic takeaway\n"
+            "claims\n"
+            "y\n"
+        ),
+        env={"FORGE_DATA_ROOT": str(data_root)},
+    )
+
+    assert result.exit_code == 1
+    assert "actual_behavior" in result.output
+    assert "source_payload" in result.output
+    assert not list((data_root / "incidents").rglob("*.yml"))

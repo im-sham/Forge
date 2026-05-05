@@ -317,32 +317,36 @@ def log(
     now = datetime.now(timezone.utc)
     incident_id = generate_id(cfg.incidents_dir, now.date())
 
-    incident = Incident(
-        id=incident_id,
-        timestamp=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        reported_by=cfg.default_reporter,
-        project=project,
-        agent=agent,
-        platform=platform,
-        severity=severity,
-        failure_type=failure_type,
-        expected_behavior=expected,
-        actual_behavior=actual,
-        context=context,
-        root_cause=root_cause,
-        immediate_fix=fix,
-        systemic_takeaway=takeaway,
-        tags=tags,
-        playbook_entry=playbook_entry or "",
-        capability_area=capability_area,
-        lifecycle_stage=lifecycle_stage,
-        issue_class=issue_class,
-        workflow_archetype=workflow_archetype or "",
-        subject_type=subject_type or "",
-        blocked_use_class=blocked_use_class,
-        observed_state=_parse_optional_observed_state(observed_state),
-        **pointer_refs,
-    )
+    try:
+        incident = Incident(
+            id=incident_id,
+            timestamp=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            reported_by=cfg.default_reporter,
+            project=project,
+            agent=agent,
+            platform=platform,
+            severity=severity,
+            failure_type=failure_type,
+            expected_behavior=expected,
+            actual_behavior=actual,
+            context=context,
+            root_cause=root_cause,
+            immediate_fix=fix,
+            systemic_takeaway=takeaway,
+            tags=tags,
+            playbook_entry=playbook_entry or "",
+            capability_area=capability_area,
+            lifecycle_stage=lifecycle_stage,
+            issue_class=issue_class,
+            workflow_archetype=workflow_archetype or "",
+            subject_type=subject_type or "",
+            blocked_use_class=blocked_use_class,
+            observed_state=_parse_optional_observed_state(observed_state),
+            **pointer_refs,
+        )
+    except ValueError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
     # Confirm
     console.print()

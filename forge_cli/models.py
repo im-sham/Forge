@@ -44,6 +44,15 @@ PROOFHOUSE_AXIS_FIELDS = [
 
 PROOFHOUSE_OBSERVED_STATE_FIELD = "observed_state"
 
+CORE_INCIDENT_FREE_TEXT_FIELDS = [
+    "expected_behavior",
+    "actual_behavior",
+    "context",
+    "root_cause",
+    "immediate_fix",
+    "systemic_takeaway",
+]
+
 OPTIONAL_INCIDENT_FIELD_ORDER = [
     *PROOFHOUSE_AXIS_FIELDS,
     PROOFHOUSE_OBSERVED_STATE_FIELD,
@@ -77,8 +86,19 @@ FORBIDDEN_SUMMARY_KEY_PARTS = {
     "ssn",
     "dob",
     "date_of_birth",
+    "member_id",
     "member_name",
     "patient_name",
+    "authorization",
+    "api_key",
+    "secret",
+    "credential",
+    "credentials",
+    "token",
+    "access_token",
+    "refresh_token",
+    "bearer_token",
+    "client_secret",
     "customer_data",
     "rate_table_row",
     "payment_payload",
@@ -89,8 +109,19 @@ SENSITIVE_SUMMARY_KEY_PREFIXES = (
     "ssn_",
     "dob_",
     "date_of_birth_",
+    "member_id_",
     "member_name_",
     "patient_name_",
+    "authorization_",
+    "api_key_",
+    "secret_",
+    "credential_",
+    "credentials_",
+    "token_",
+    "access_token_",
+    "refresh_token_",
+    "bearer_token_",
+    "client_secret_",
 )
 
 SAFE_SUMMARY_KEY_SUFFIXES = (
@@ -114,6 +145,7 @@ SAFE_SUMMARY_KEY_SUFFIXES = (
 )
 
 CAMEL_CASE_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
+KEY_LABEL_PATTERN = re.compile(r"[\"']?(?P<key>[A-Za-z][A-Za-z0-9_-]{1,80})[\"']?\s*[:=]")
 
 CAPABILITY_AREA_ALIASES = [
     (
@@ -314,6 +346,38 @@ def _validate_summary_only_mapping(value: dict[str, Any], field_name: str) -> No
                     _validate_summary_only_mapping(item, field_name)
 
 
+def _validate_summary_only_json_value(value: Any, field_name: str) -> None:
+    if isinstance(value, dict):
+        _validate_summary_only_mapping(value, field_name)
+    elif isinstance(value, list):
+        for item in value:
+            _validate_summary_only_json_value(item, field_name)
+
+
+def validate_summary_only_text(value: str, field_name: str) -> str:
+    """Reject obvious raw payload labels in incident free-text fields."""
+    if not value:
+        return value
+    stripped = value.strip()
+    if stripped.startswith(("{", "[")):
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError:
+            parsed = None
+        if parsed is not None:
+            _validate_summary_only_json_value(parsed, field_name)
+
+    for match in KEY_LABEL_PATTERN.finditer(value):
+        key = match.group("key")
+        normalized = _normalize_key(key)
+        if _is_forbidden_summary_key(normalized):
+            raise ValueError(
+                f"{field_name} contains forbidden raw/sensitive payload label '{key}'. "
+                "Store pointer refs, ids, digests, labels, or short summaries only."
+            )
+    return value
+
+
 def parse_pointer_value(value: Any, field_name: str) -> dict[str, Any] | None:
     """Parse a pointer ref from YAML data or CLI/MCP text input."""
     if value is None:
@@ -463,6 +527,10 @@ class Incident:
     asset_ref: dict[str, Any] | None = None
     derivation_ref: dict[str, Any] | None = None
     transform_ref: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        for field_name in CORE_INCIDENT_FREE_TEXT_FIELDS:
+            validate_summary_only_text(getattr(self, field_name), field_name)
 
     def to_dict(self) -> dict:
         """Convert to ordered dict matching the YAML template field order."""

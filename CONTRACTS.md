@@ -39,6 +39,8 @@ Forge incidents may point to:
 
 Pointers should be summaries or IDs only. Do not copy raw source material, customer data, regulated personal data, rights records, approval records, export manifests, or training/eval source material into Forge.
 
+Core incident free-text fields are also summary-only: `expected_behavior`, `actual_behavior`, `context`, `root_cause`, `immediate_fix`, and `systemic_takeaway` should contain short incident summaries, synthetic fixture descriptions, refs, IDs, digests, and remediation notes only. Forge rejects obvious raw/sensitive payload indicators in those fields, including payload-shaped JSON and labels such as `payload`, `raw_payload`, `source_payload`, `document_text`, `claim_text`, `payment_payload`, `phi`, `ssn`, `dob`, `member_id`, `patient_name`, `authorization`, `api_key`, `secret`, and credential or token variants. This is boundary hygiene, not DLP or PHI classification.
+
 ## Structured Incident Axes
 
 Forge keeps `failure_type` as the mechanism-level classification and stores Proofhouse / document-operations learning as optional axes:
