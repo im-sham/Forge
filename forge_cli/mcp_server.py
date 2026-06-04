@@ -14,9 +14,9 @@ from forge_cli.incident_store import (
     DuplicateIncidentError,
     find_incident,
     generate_id,
-    get_all_incidents,
+    get_incident_stats,
     list_incidents,
-    save_incident,
+    save_generated_incident,
 )
 from forge_cli.models import (
     CAPABILITY_AREA_VALUES,
@@ -234,10 +234,10 @@ def forge_log(
         return str(e)
 
     try:
-        filepath = save_incident(incident, cfg.incidents_dir)
+        filepath = save_generated_incident(incident, cfg.incidents_dir)
     except DuplicateIncidentError as e:
         return str(e)
-    return f"Incident logged: {incident_id}\nSaved to: {filepath}"
+    return f"Incident logged: {incident.id}\nSaved to: {filepath}"
 
 
 @mcp.tool()
@@ -349,62 +349,49 @@ def forge_stats(
         issue_class: Filter by structured issue class
         capability_area: Filter by capability area
     """
-    from collections import Counter
-
     cfg = load_config()
-    incidents = get_all_incidents(cfg.incidents_dir)
+    stats = get_incident_stats(
+        cfg.incidents_dir,
+        project=project or None,
+        severity=severity or None,
+        issue_class=issue_class or None,
+        capability_area=capability_area or None,
+    )
 
-    if project:
-        incidents = [i for i in incidents if i.project == project]
-    if severity:
-        incidents = [i for i in incidents if i.severity == severity]
-    if issue_class:
-        incidents = [i for i in incidents if i.issue_class == issue_class]
-    if capability_area:
-        incidents = [i for i in incidents if i.capability_area == capability_area]
-
-    if not incidents:
+    if not stats.total:
         return "No incidents found."
 
-    by_severity = Counter(i.severity for i in incidents)
-    by_type = Counter(i.failure_type for i in incidents)
-    by_project = Counter(i.project for i in incidents)
-    by_platform = Counter(i.platform for i in incidents if i.platform)
-    by_issue_class = Counter(i.issue_class for i in incidents if i.issue_class)
-    by_capability_area = Counter(i.capability_area for i in incidents if i.capability_area)
-    all_tags = Counter(tag for i in incidents for tag in i.tags)
-
-    lines = [f"Total incidents: {len(incidents)}", ""]
+    lines = [f"Total incidents: {stats.total}", ""]
 
     lines.append("By Severity:")
-    for sev, count in by_severity.most_common():
+    for sev, count in stats.by_severity.items():
         lines.append(f"  {sev}: {count}")
 
     lines.append("\nBy Project:")
-    for proj, count in by_project.most_common():
+    for proj, count in stats.by_project.items():
         lines.append(f"  {proj}: {count}")
 
     lines.append("\nBy Failure Type:")
-    for ft, count in by_type.most_common():
+    for ft, count in stats.by_type.items():
         lines.append(f"  {ft}: {count}")
 
     lines.append("\nBy Platform:")
-    for plat, count in by_platform.most_common():
+    for plat, count in stats.by_platform.items():
         lines.append(f"  {plat}: {count}")
 
-    if by_issue_class:
+    if stats.by_issue_class:
         lines.append("\nBy Issue Class:")
-        for value, count in by_issue_class.most_common():
+        for value, count in stats.by_issue_class.items():
             lines.append(f"  {value}: {count}")
 
-    if by_capability_area:
+    if stats.by_capability_area:
         lines.append("\nBy Capability Area:")
-        for value, count in by_capability_area.most_common():
+        for value, count in stats.by_capability_area.items():
             lines.append(f"  {value}: {count}")
 
-    if all_tags:
+    if stats.by_tag:
         lines.append("\nTop Tags:")
-        for tag, count in all_tags.most_common(10):
+        for tag, count in list(stats.by_tag.items())[:10]:
             lines.append(f"  {tag}: {count}")
 
     return "\n".join(lines)

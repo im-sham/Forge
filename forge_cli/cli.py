@@ -30,9 +30,10 @@ from forge_cli.incident_store import (
     find_incident_path,
     generate_id,
     get_all_incidents,
+    list_incident_summaries,
     list_incidents,
     load_incident,
-    save_incident,
+    save_generated_incident,
 )
 from forge_cli.models import (
     CAPABILITY_AREA_VALUES,
@@ -358,7 +359,7 @@ def log(
         raise typer.Exit(0)
 
     try:
-        filepath = save_incident(incident, cfg.incidents_dir)
+        filepath = save_generated_incident(incident, cfg.incidents_dir)
     except DuplicateIncidentError as e:
         print_error(str(e))
         raise typer.Exit(1)
@@ -620,24 +621,17 @@ def stats(
         print_error(str(e))
         raise typer.Exit(1)
 
-    incidents = get_all_incidents(cfg.incidents_dir)
-
-    if project:
-        incidents = [i for i in incidents if i.project == project]
-    if severity:
-        incidents = [i for i in incidents if i.severity == severity]
-    if since:
-        incidents = [i for i in incidents if i.timestamp >= since]
-    if issue_class:
-        incidents = [i for i in incidents if i.issue_class == issue_class]
-    if capability_area:
-        incidents = [i for i in incidents if i.capability_area == capability_area]
-    if lifecycle_stage:
-        incidents = [i for i in incidents if i.lifecycle_stage == lifecycle_stage]
-    if workflow_archetype:
-        incidents = [i for i in incidents if i.workflow_archetype == workflow_archetype]
-    if blocked_use_class:
-        incidents = [i for i in incidents if i.blocked_use_class == blocked_use_class]
+    incidents = list_incident_summaries(
+        cfg.incidents_dir,
+        project=project,
+        severity=severity,
+        since=since,
+        issue_class=issue_class,
+        capability_area=capability_area,
+        lifecycle_stage=lifecycle_stage,
+        workflow_archetype=workflow_archetype,
+        blocked_use_class=blocked_use_class,
+    )
 
     display_stats(incidents)
 

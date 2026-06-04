@@ -7,8 +7,10 @@ from forge_cli.incident_store import (
     find_incident,
     find_incident_path,
     generate_id,
+    get_incident_stats,
     list_incidents,
     load_incident,
+    save_generated_incident,
     save_incident,
 )
 from forge_cli.models import Incident
@@ -193,6 +195,82 @@ def test_list_incidents_filters_structured_axes(tmp_incidents_dir, sample_data):
     )
 
     assert [incident.id for incident in result] == ["2026-03-04-001"]
+
+
+def test_list_incidents_uses_index_without_tree_scan(
+    tmp_incidents_dir, sample_data, monkeypatch
+):
+    first = sample_data.copy()
+    first["project"] = "mila"
+    second = sample_data.copy()
+    second["id"] = "2026-03-04-002"
+    second["project"] = "aegis"
+    save_incident(Incident.from_dict(first), tmp_incidents_dir)
+    save_incident(Incident.from_dict(second), tmp_incidents_dir)
+
+    def fail_rglob(self, pattern):
+        raise AssertionError("list_incidents should use the compact incident index")
+
+    monkeypatch.setattr(Path, "rglob", fail_rglob)
+
+    result = list_incidents(tmp_incidents_dir, project="mila")
+
+    assert [incident.id for incident in result] == ["2026-03-04-001"]
+
+
+def test_find_incident_suffix_uses_index_without_tree_scan(
+    tmp_incidents_dir, sample_data, monkeypatch
+):
+    incident = Incident.from_dict(sample_data)
+    save_incident(incident, tmp_incidents_dir)
+
+    def fail_rglob(self, pattern):
+        raise AssertionError("find_incident_path should use the compact incident index")
+
+    monkeypatch.setattr(Path, "rglob", fail_rglob)
+
+    assert find_incident_path(tmp_incidents_dir, "001") == (
+        tmp_incidents_dir / "2026-03" / "2026-03-04-001.yml"
+    )
+
+
+def test_get_incident_stats_uses_index_without_loading_yaml(
+    tmp_incidents_dir, sample_data, monkeypatch
+):
+    first = sample_data.copy()
+    first["project"] = "mila"
+    second = sample_data.copy()
+    second["id"] = "2026-03-04-002"
+    second["project"] = "aegis"
+    second["severity"] = "safety-critical"
+    save_incident(Incident.from_dict(first), tmp_incidents_dir)
+    save_incident(Incident.from_dict(second), tmp_incidents_dir)
+
+    def fail_load(path):
+        raise AssertionError("stats should use the compact incident index")
+
+    monkeypatch.setattr("forge_cli.incident_store.load_incident", fail_load)
+
+    stats = get_incident_stats(tmp_incidents_dir)
+
+    assert stats.total == 2
+    assert stats.by_project == {"aegis": 1, "mila": 1}
+    assert stats.by_severity == {"functional": 1, "safety-critical": 1}
+
+
+def test_save_generated_incident_retries_on_duplicate_id(tmp_incidents_dir, sample_data):
+    save_incident(Incident.from_dict(sample_data), tmp_incidents_dir)
+
+    data = sample_data.copy()
+    data["id"] = ""
+    data["actual_behavior"] = "Second incident for the same day."
+    incident = Incident.from_dict(data)
+
+    filepath = save_generated_incident(incident, tmp_incidents_dir)
+
+    assert incident.id == "2026-03-04-002"
+    assert filepath.name == "2026-03-04-002.yml"
+    assert filepath.exists()
 
 
 def test_save_incident_rejects_duplicate_id(tmp_incidents_dir, sample_data):
