@@ -455,7 +455,7 @@ def ref_cmd(
         raise typer.Exit(1)
 
     indent = None if compact else 2
-    typer.echo(json.dumps(incident.to_ref_envelope(), indent=indent))
+    typer.echo(json.dumps(incident.to_ref_envelope_model().to_dict(), indent=indent))
 
 
 @app.command()
