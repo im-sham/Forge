@@ -22,7 +22,8 @@ from forge_cli.mcp_http import options_from_env, serve_mcp_http
 def main() -> None:
     serve_mcp_http(
         options_from_env(
-            default_host="0.0.0.0",
+            # Legacy private-network wrapper; see module docstring.
+            default_host="0.0.0.0",  # nosec B104
             default_port=8765,
             allow_remote=True,
             disable_dns_rebinding_protection=True,
