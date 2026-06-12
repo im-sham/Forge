@@ -62,6 +62,8 @@ def test_forge_schema_exposes_centralized_structured_axis_metadata():
     assert schema["structured_axis_metadata"]["issue_class"]["values"]
     assert "subject_ref" in schema["pointer_ref_fields"]
     assert "subject_ref" in schema["incident_ref_fields"]
+    assert "control_refs" in schema["pointer_ref_fields"]
+    assert "control_refs" in schema["incident_ref_fields"]
 
 
 def test_forge_list_filters_structured_axes(tmp_path, monkeypatch, sample_data):
@@ -178,3 +180,34 @@ def test_forge_log_accepts_subject_ref(tmp_path, monkeypatch):
     saved = next((data_root / "incidents").rglob("*.yml"))
     incident = Incident.from_dict(yaml.safe_load(saved.read_text()))
     assert incident.subject_ref["ref_id"] == "subject:document-packet:synthetic-demo"
+
+
+def test_forge_log_accepts_control_refs(tmp_path, monkeypatch):
+    data_root = tmp_path / "forge-data"
+    monkeypatch.setenv("FORGE_DATA_ROOT", str(data_root))
+
+    result = forge_log(
+        project="proofhouse-document-operations",
+        agent="document-review-fixture",
+        severity="functional",
+        failure_type="other",
+        expected_behavior="Expected behavior",
+        actual_behavior="Actual behavior",
+        control_refs=json.dumps(
+            [
+                "control:document_ops_redaction_required:g2",
+                {
+                    "ref_id": "control:document_ops_use_gate:g2",
+                    "control_type": "use_gate",
+                },
+            ]
+        ),
+    )
+
+    assert "Incident logged:" in result
+    saved = next((data_root / "incidents").rglob("*.yml"))
+    incident = Incident.from_dict(yaml.safe_load(saved.read_text()))
+    assert [ref["ref_id"] for ref in incident.control_refs] == [
+        "control:document_ops_redaction_required:g2",
+        "control:document_ops_use_gate:g2",
+    ]

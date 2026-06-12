@@ -82,6 +82,19 @@ workflow_evidence_snapshot:
     digest: "sha256:claims-rate-source-fixture-placeholder"
     summary: "Digest and summary posture for synthetic claims evidence classes"
 
+control_refs:
+  - contract_version: "proofhouse-shared-contracts/v0.1"
+    contract_name: "ControlRef"
+    canonical_owner: "workflow_context"
+    cache_policy: "summary_snapshot"
+    ref:
+      ref_id: "control:claims-hybrid-high-dollar-review-v0:rate-source-traceability:g31"
+      control_assignment_id: "control-assignment:claims-rate-source-traceability:g31"
+      control_key: "rate_source_traceability"
+      control_family: "claims_review"
+      implementation_status: "implemented"
+      evidence_status: "incomplete"
+
 assessment_ref:
   contract_version: "proofhouse-shared-contracts/v0.1"
   contract_name: "AssessmentRef"

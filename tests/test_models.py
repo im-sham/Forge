@@ -304,6 +304,14 @@ def test_structured_document_operations_incident_roundtrip(sample_data):
                 "ref_id": "workflow-evidence-snapshot:document_ops_regulated_review_v0:g1",
                 "digest": "sha256:placeholder",
             },
+            "control_refs": [
+                "control:document_ops_redaction_required:g2",
+                {
+                    "ref_id": "control:document_ops_use_gate:g2",
+                    "control_type": "use_gate",
+                    "cache_policy": "ref_only",
+                },
+            ],
             "assessment_ref": "assessment:document_ops_regulated_review_v0:g2",
             "policy_decision_ref": "policy-decision:document_ops_review_required:g2",
             "use_approval_ref": "use-approval:document_ops_internal_eval:g2",
@@ -329,4 +337,7 @@ def test_structured_document_operations_incident_roundtrip(sample_data):
     assert ref.blocked_use_class == "internal_eval"
     assert ref.workflow_ref["ref_id"] == "workflow:document_ops_regulated_review_v0"
     assert ref.workflow_evidence_snapshot["digest"] == "sha256:placeholder"
+    assert ref.control_refs[0]["ref_id"] == "control:document_ops_redaction_required:g2"
+    assert ref.control_refs[0]["ref_type"] == "control"
+    assert ref.control_refs[1]["control_type"] == "use_gate"
     assert ref.use_approval_ref["ref_id"] == "use-approval:document_ops_internal_eval:g2"

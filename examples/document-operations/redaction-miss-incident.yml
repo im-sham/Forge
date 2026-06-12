@@ -70,6 +70,19 @@ workflow_evidence_snapshot:
     snapshot_id: "workflow-evidence-snapshot:document_ops_regulated_review_v0:g1"
     digest: "sha256:document-ops-fixture-placeholder"
 
+control_refs:
+  - contract_version: "proofhouse-shared-contracts/v0.1"
+    contract_name: "ControlRef"
+    canonical_owner: "workflow_context"
+    cache_policy: "summary_snapshot"
+    ref:
+      ref_id: "control:document_ops_regulated_review_v0:redaction_required:g2"
+      control_assignment_id: "control-assignment:document_ops_redaction_required:g2"
+      control_key: "redaction_required"
+      control_family: "document_operations"
+      implementation_status: "implemented"
+      evidence_status: "incomplete"
+
 assessment_ref:
   contract_version: "proofhouse-shared-contracts/v0.1"
   contract_name: "AssessmentRef"

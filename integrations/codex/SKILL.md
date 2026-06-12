@@ -56,7 +56,7 @@ For document-operations or Operational Learning incidents, prefer structured axe
 - `subject_type`
 - `blocked_use_class`
 
-Use pointer refs for `WorkflowRef`, `EvidenceRef` / `WorkflowEvidenceSnapshot`, `AssessmentRef`, `PolicyDecisionRef`, `UseApprovalRef`, and optional `AssetRef`, `DerivationRef`, or `TransformRef`. Forge should record the incident and recurrence pattern, not source workflow truth, readiness score truth, approval state, export manifests, or source document / asset payloads.
+Use pointer refs for `WorkflowRef`, `EvidenceRef` / `WorkflowEvidenceSnapshot`, `ControlRef`, `AssessmentRef`, `PolicyDecisionRef`, `UseApprovalRef`, and optional `AssetRef`, `DerivationRef`, or `TransformRef`. Forge should record the incident and recurrence pattern, not source workflow truth, workflow-control truth, readiness score truth, approval state, export manifests, or source document / asset payloads.
 
 Example:
 ```

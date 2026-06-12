@@ -14,9 +14,9 @@ internal eval, downstream handoff, audit export, or savings recognition.
   `allowed_amount_conflict`, or `missing_claim_evidence`.
 - `observed_state` names the affected evidence class, but source detail remains
   a summary or digest.
-- `WorkflowRef` / `WorkflowEvidenceSnapshot` exists, while the rate-source
-  evidence summary, method, source version, or licensed-access posture is
-  missing or unreviewed.
+- `WorkflowRef` / `WorkflowEvidenceSnapshot` and relevant `ControlRef` pointers
+  exist, while the rate-source evidence summary, method, source version, or
+  licensed-access posture is missing or unreviewed.
 - Governance `PolicyDecisionRef` or `UseApprovalRef` is incomplete, denied, or
   review-required for the attempted use.
 
@@ -38,8 +38,9 @@ internal eval, downstream handoff, audit export, or savings recognition.
 1. Record structured axes: `capability_area`, `lifecycle_stage`, `issue_class`,
    `workflow_archetype`, `subject_type`, and `blocked_use_class`.
 2. Attach pointer-style refs only: `WorkflowRef`, `WorkflowEvidenceSnapshot` or
-   `EvidenceRef`, `AssessmentRef`, `PolicyDecisionRef`, `UseApprovalRef`, and
-   any relevant `AssetRef`, `DerivationRef`, or `TransformRef`.
+   `EvidenceRef`, `ControlRef`, `AssessmentRef`, `PolicyDecisionRef`,
+   `UseApprovalRef`, and any relevant `AssetRef`, `DerivationRef`, or
+   `TransformRef`.
 3. Route workflow/source evidence gaps to Workflow Context.
 4. Route suitability and trust-gap interpretation to Readiness.
 5. Route approvals, redaction, use, export, action, and audit readback to
