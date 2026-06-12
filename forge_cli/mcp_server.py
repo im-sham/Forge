@@ -30,6 +30,7 @@ from forge_cli.models import (
     Incident,
     Severity,
     parse_observed_state,
+    parse_pointer_list_value,
     parse_pointer_value,
 )
 from forge_cli.schema_metadata import STRUCTURED_AXIS_METADATA
@@ -111,6 +112,7 @@ def forge_log(
     workflow_ref: str = "",
     evidence_ref: str = "",
     workflow_evidence_snapshot: str = "",
+    control_refs: str = "",
     subject_ref: str = "",
     assessment_ref: str = "",
     policy_decision_ref: str = "",
@@ -147,6 +149,7 @@ def forge_log(
         workflow_ref: Optional WorkflowRef pointer as JSON object or ref id.
         evidence_ref: Optional EvidenceRef pointer as JSON object or ref id.
         workflow_evidence_snapshot: Optional WorkflowEvidenceSnapshot pointer as JSON object or id.
+        control_refs: Optional ControlRef pointers as JSON array, JSON object, or ref id.
         subject_ref: Optional SubjectRef pointer as JSON object or ref id.
         assessment_ref: Optional AssessmentRef pointer as JSON object or ref id.
         policy_decision_ref: Optional PolicyDecisionRef pointer as JSON object or ref id.
@@ -184,6 +187,7 @@ def forge_log(
             "workflow_evidence_snapshot": parse_pointer_value(
                 workflow_evidence_snapshot, "workflow_evidence_snapshot"
             ),
+            "control_refs": parse_pointer_list_value(control_refs, "control_refs"),
             "subject_ref": parse_pointer_value(subject_ref, "subject_ref"),
             "assessment_ref": parse_pointer_value(assessment_ref, "assessment_ref"),
             "policy_decision_ref": parse_pointer_value(policy_decision_ref, "policy_decision_ref"),
@@ -477,7 +481,7 @@ def forge_schema() -> str:
                 "capability_area", "lifecycle_stage", "issue_class", "workflow_archetype",
                 "subject_type", "blocked_use_class", "observed_state",
                 "workflow_ref", "evidence_ref", "workflow_evidence_snapshot",
-                "subject_ref", "assessment_ref", "policy_decision_ref", "use_approval_ref",
+                "control_refs", "subject_ref", "assessment_ref", "policy_decision_ref", "use_approval_ref",
                 "asset_ref", "derivation_ref", "transform_ref",
             ],
             "structured_axis_fields": PROOFHOUSE_AXIS_FIELDS,
@@ -499,7 +503,7 @@ def forge_schema() -> str:
                 "incident_id", "failure_type", "severity", "capability_area",
                 "lifecycle_stage", "issue_class", "workflow_archetype", "subject_type",
                 "blocked_use_class", "workflow_ref", "evidence_ref",
-                "workflow_evidence_snapshot", "subject_ref", "assessment_ref", "policy_decision_ref",
+                "workflow_evidence_snapshot", "control_refs", "subject_ref", "assessment_ref", "policy_decision_ref",
                 "use_approval_ref", "asset_ref", "derivation_ref", "transform_ref",
                 "playbook_entry",
             ],

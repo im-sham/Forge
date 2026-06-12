@@ -45,6 +45,7 @@ from forge_cli.models import (
     Incident,
     Severity,
     parse_observed_state,
+    parse_pointer_list_value,
     parse_pointer_value,
 )
 from forge_cli.analyzer import (
@@ -124,6 +125,14 @@ def _parse_optional_ref(field_name: str, value: str | None) -> dict | None:
         raise typer.Exit(1)
 
 
+def _parse_optional_ref_list(field_name: str, values: list[str] | None) -> list[dict]:
+    try:
+        return parse_pointer_list_value(values, field_name)
+    except (TypeError, ValueError) as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+
 def _parse_optional_observed_state(value: str | None) -> dict | None:
     try:
         return parse_observed_state(value)
@@ -188,6 +197,11 @@ def log(
         None,
         "--workflow-evidence-snapshot",
         help="WorkflowEvidenceSnapshot pointer as JSON object or snapshot id",
+    ),
+    control_refs: Optional[list[str]] = typer.Option(
+        None,
+        "--control-ref",
+        help="Repeatable ControlRef pointer as a JSON object or ref id",
     ),
     subject_ref: Optional[str] = typer.Option(
         None,
@@ -312,6 +326,7 @@ def log(
         }.items()
         if field_name in PROOFHOUSE_REF_FIELDS
     }
+    pointer_refs["control_refs"] = _parse_optional_ref_list("control_refs", control_refs)
 
     # Build incident
     now = datetime.now(timezone.utc)

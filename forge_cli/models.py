@@ -24,6 +24,7 @@ PROOFHOUSE_REF_FIELDS = [
     "workflow_ref",
     "evidence_ref",
     "workflow_evidence_snapshot",
+    "control_refs",
     "subject_ref",
     "assessment_ref",
     "policy_decision_ref",
@@ -63,6 +64,7 @@ REF_TYPE_BY_FIELD = {
     "workflow_ref": "workflow",
     "evidence_ref": "evidence",
     "workflow_evidence_snapshot": "workflow_evidence_snapshot",
+    "control_refs": "control",
     "subject_ref": "subject",
     "assessment_ref": "assessment",
     "policy_decision_ref": "policy_decision",
@@ -403,6 +405,36 @@ def parse_pointer_value(value: Any, field_name: str) -> dict[str, Any] | None:
     raise TypeError(f"{field_name} must be a mapping, JSON object string, string ref id, or empty")
 
 
+def parse_pointer_list_value(value: Any, field_name: str) -> list[dict[str, Any]]:
+    """Parse one or more pointer refs from YAML data or CLI/MCP text input."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return []
+        if stripped.startswith("["):
+            parsed = json.loads(stripped)
+            if not isinstance(parsed, list):
+                raise ValueError(f"{field_name} must be a JSON array when JSON array syntax is supplied")
+            return parse_pointer_list_value(parsed, field_name)
+        parsed_ref = parse_pointer_value(stripped, field_name)
+        return [parsed_ref] if parsed_ref else []
+    if isinstance(value, dict):
+        parsed_ref = parse_pointer_value(value, field_name)
+        return [parsed_ref] if parsed_ref else []
+    if isinstance(value, (list, tuple)):
+        refs: list[dict[str, Any]] = []
+        for item in value:
+            parsed_ref = parse_pointer_value(item, field_name)
+            if parsed_ref:
+                refs.append(parsed_ref)
+        return refs
+    raise TypeError(
+        f"{field_name} must be a list, JSON array string, mapping, string ref id, or empty"
+    )
+
+
 def parse_observed_state(value: Any) -> dict[str, Any] | None:
     """Parse optional incident-local observed state without assuming canonical truth."""
     if value is None:
@@ -479,6 +511,7 @@ class IncidentRef:
     workflow_ref: dict[str, Any] | None = None
     evidence_ref: dict[str, Any] | None = None
     workflow_evidence_snapshot: dict[str, Any] | None = None
+    control_refs: list[dict[str, Any]] = field(default_factory=list)
     subject_ref: dict[str, Any] | None = None
     assessment_ref: dict[str, Any] | None = None
     policy_decision_ref: dict[str, Any] | None = None
@@ -520,6 +553,7 @@ class Incident:
     workflow_ref: dict[str, Any] | None = None
     evidence_ref: dict[str, Any] | None = None
     workflow_evidence_snapshot: dict[str, Any] | None = None
+    control_refs: list[dict[str, Any]] = field(default_factory=list)
     subject_ref: dict[str, Any] | None = None
     assessment_ref: dict[str, Any] | None = None
     policy_decision_ref: dict[str, Any] | None = None
@@ -584,6 +618,7 @@ class Incident:
             workflow_evidence_snapshot=parse_pointer_value(
                 data.get("workflow_evidence_snapshot"), "workflow_evidence_snapshot"
             ),
+            control_refs=parse_pointer_list_value(data.get("control_refs"), "control_refs"),
             subject_ref=parse_pointer_value(data.get("subject_ref"), "subject_ref"),
             assessment_ref=parse_pointer_value(data.get("assessment_ref"), "assessment_ref"),
             policy_decision_ref=parse_pointer_value(
@@ -642,6 +677,7 @@ def build_incident_ref(incident: Incident) -> IncidentRef:
         workflow_ref=incident.workflow_ref,
         evidence_ref=incident.evidence_ref,
         workflow_evidence_snapshot=incident.workflow_evidence_snapshot,
+        control_refs=list(incident.control_refs),
         subject_ref=incident.subject_ref,
         assessment_ref=incident.assessment_ref,
         policy_decision_ref=incident.policy_decision_ref,

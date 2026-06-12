@@ -29,6 +29,7 @@ Forge incidents may point to:
 - `WorkflowRef`
 - `EvidenceRef`
 - `WorkflowEvidenceSnapshot`
+- `ControlRef`
 - `SubjectRef`
 - `AssessmentRef`
 - `PolicyDecisionRef`
@@ -98,6 +99,7 @@ Projection fields:
 - `workflow_ref`
 - `evidence_ref`
 - `workflow_evidence_snapshot`
+- `control_refs`
 - `subject_ref`
 - `assessment_ref`
 - `policy_decision_ref`

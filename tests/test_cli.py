@@ -60,6 +60,10 @@ def test_log_command_accepts_structured_axes_and_pointer_refs(tmp_path):
             "internal_eval",
             "--workflow-ref",
             "workflow:document_ops_regulated_review_v0",
+            "--control-ref",
+            "control:document_ops_redaction_required:g2",
+            "--control-ref",
+            "control:document_ops_use_gate:g2",
             "--assessment-ref",
             "assessment:document_ops_regulated_review_v0:g2",
             "--use-approval-ref",
@@ -86,6 +90,10 @@ def test_log_command_accepts_structured_axes_and_pointer_refs(tmp_path):
     assert incident.capability_area == "governance"
     assert incident.issue_class == "redaction_miss"
     assert incident.workflow_ref["ref_id"] == "workflow:document_ops_regulated_review_v0"
+    assert [ref["ref_id"] for ref in incident.control_refs] == [
+        "control:document_ops_redaction_required:g2",
+        "control:document_ops_use_gate:g2",
+    ]
     assert incident.use_approval_ref["ref_id"] == "use-approval:document_ops_internal_eval:g2"
 
 
