@@ -48,6 +48,10 @@ jobs:
           python -m pip install --upgrade "pip>=26.1"
           python -m pip install -e ".[dev]"
           python -m pip install pip-audit
+          python -m pip install bandit[toml]
 
       - name: Run pip-audit
         run: python -m pip_audit --progress-spinner off
+
+      - name: Run Bandit
+        run: python -m bandit -r forge_cli -q --severity-level medium

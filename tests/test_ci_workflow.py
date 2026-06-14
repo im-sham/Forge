@@ -18,6 +18,8 @@ def test_ci_workflow_has_dependency_security_gate() -> None:
     assert 'python -m pip install --upgrade "pip>=26.1"' in workflow
     assert "python -m pip install pip-audit" in workflow
     assert "python -m pip_audit --progress-spinner off" in workflow
+    assert "python -m pip install bandit[toml]" in workflow
+    assert "python -m bandit -r forge_cli -q --severity-level medium" in workflow
 
 
 def test_github_actions_are_pinned_to_commit_shas() -> None:
