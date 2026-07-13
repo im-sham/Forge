@@ -21,55 +21,119 @@ def severity_color(severity: str) -> str:
     }.get(severity, "white")
 
 
+def _safe_string(value: object) -> str:
+    return "".join(
+        character if character.isprintable() else "?" for character in str(value)
+    )
+
+
+def _literal_text(value: object, style: str | None = None) -> Text:
+    return Text(_safe_string(value), style=style)
+
+
+def _literal_multiline_text(value: object, style: str | None = None) -> Text:
+    safe = "\n".join(_safe_string(line) for line in str(value).split("\n"))
+    return Text(safe, style=style)
+
+
+def _append_field(
+    content: Text,
+    label: str,
+    value: object,
+    *,
+    width: int,
+    label_style: str = "cyan bold",
+    value_style: str | None = None,
+) -> None:
+    if content:
+        content.append("\n")
+    content.append(Text(f"{label + ':':<{width}}", style=label_style))
+    content.append(_literal_multiline_text(value, value_style))
+
+
 def display_incident_table(incidents: list[Incident], total: int | None = None) -> None:
     """Display a Rich table of incidents."""
     if not incidents:
-        console.print("[dim]No incidents found.[/dim]")
+        console.print(Text("No incidents found.", style="dim"))
         return
 
-    table = Table(title="Forge Incidents", show_lines=False, padding=(0, 1))
-    table.add_column("ID", style="cyan", no_wrap=True)
-    table.add_column("Project", style="blue")
-    table.add_column("Platform", style="dim cyan")
-    table.add_column("Severity", no_wrap=True)
-    table.add_column("Type", style="magenta")
-    table.add_column("Summary")
+    table = Table(
+        title=Text("Forge Incidents"),
+        show_lines=False,
+        padding=(0, 1),
+    )
+    table.add_column(Text("ID"), style="cyan", no_wrap=True)
+    table.add_column(Text("Project"), style="blue")
+    table.add_column(Text("Platform"), style="dim cyan")
+    table.add_column(Text("Severity"), no_wrap=True)
+    table.add_column(Text("Type"), style="magenta")
+    table.add_column(Text("Summary"))
 
     for inc in incidents:
         sev_style = severity_color(inc.severity)
         summary = (inc.actual_behavior or "").strip().split("\n")[0][:60]
-
         table.add_row(
-            inc.id,
-            inc.project,
-            inc.platform or "",
-            Text(inc.severity, style=sev_style),
-            inc.failure_type,
-            summary,
+            _literal_text(inc.id),
+            _literal_text(inc.project),
+            _literal_text(inc.platform or ""),
+            _literal_text(inc.severity, sev_style),
+            _literal_text(inc.failure_type),
+            _literal_text(summary),
         )
 
     console.print(table)
 
     shown = len(incidents)
     if total and total > shown:
-        console.print(f"[dim]Showing {shown} of {total} incidents[/dim]")
+        console.print(
+            Text(f"Showing {shown} of {total} incidents", style="dim")
+        )
 
 
 def display_incident_panel(incident: Incident) -> None:
     """Display a Rich panel summarizing a logged incident."""
-    lines = [
-        f"[cyan]ID:[/cyan]         {incident.id}",
-        f"[cyan]Project:[/cyan]    {incident.project}",
-        f"[cyan]Agent:[/cyan]      {incident.agent}",
-        f"[cyan]Platform:[/cyan]   {incident.platform}",
-        f"[cyan]Severity:[/cyan]   [{severity_color(incident.severity)}]{incident.severity}[/]",
-        f"[cyan]Type:[/cyan]       {incident.failure_type}",
-        "",
-        f"[cyan]Expected:[/cyan]   {incident.expected_behavior.strip()[:80]}",
-        f"[cyan]Actual:[/cyan]     {incident.actual_behavior.strip()[:80]}",
-    ]
+    shown_id = incident.id or "[allocated at save]"
+    content = Text()
+    for label, value, value_style in [
+        ("ID", shown_id, None),
+        ("Project", incident.project, None),
+        ("Agent", incident.agent, None),
+        ("Platform", incident.platform or "", None),
+        ("Severity", incident.severity, severity_color(incident.severity)),
+        ("Type", incident.failure_type, None),
+    ]:
+        _append_field(
+            content,
+            label,
+            value,
+            width=12,
+            label_style="cyan",
+            value_style=value_style,
+        )
+
+    content.append("\n")
+    _append_field(
+        content,
+        "Expected",
+        incident.expected_behavior.strip()[:80],
+        width=12,
+        label_style="cyan",
+    )
+    _append_field(
+        content,
+        "Actual",
+        incident.actual_behavior.strip()[:80],
+        width=12,
+        label_style="cyan",
+    )
     if incident.tags:
-        lines.append(f"[cyan]Tags:[/cyan]       {', '.join(incident.tags)}")
+        _append_field(
+            content,
+            "Tags",
+            ", ".join(incident.tags),
+            width=12,
+            label_style="cyan",
+        )
     axes = [
         value
         for value in [
@@ -81,27 +145,43 @@ def display_incident_panel(incident: Incident) -> None:
         if value
     ]
     if axes:
-        lines.append(f"[cyan]Axes:[/cyan]       {', '.join(axes)}")
+        _append_field(
+            content,
+            "Axes",
+            ", ".join(axes),
+            width=12,
+            label_style="cyan",
+        )
 
-    content = "\n".join(lines)
-    console.print(Panel(content, title="Incident Captured", border_style="green"))
+    console.print(
+        Panel(
+            content,
+            title=Text("Incident Captured"),
+            border_style="green",
+        )
+    )
 
 
 def display_incident_detail(incident: Incident) -> None:
     """Display full incident details in a Rich panel."""
-    sev_style = severity_color(incident.severity)
-
-    lines = [
-        f"[cyan bold]ID:[/]            {incident.id}",
-        f"[cyan bold]Timestamp:[/]     {incident.timestamp}",
-        f"[cyan bold]Reported by:[/]   {incident.reported_by}",
-        "",
-        f"[cyan bold]Project:[/]       {incident.project}",
-        f"[cyan bold]Agent:[/]         {incident.agent}",
-        f"[cyan bold]Platform:[/]      {incident.platform}",
-        f"[cyan bold]Severity:[/]      [{sev_style}]{incident.severity}[/]",
-        f"[cyan bold]Failure type:[/]  {incident.failure_type}",
-    ]
+    content = Text()
+    for label, value, value_style in [
+        ("ID", incident.id, None),
+        ("Timestamp", incident.timestamp, None),
+        ("Reported by", incident.reported_by, None),
+        ("Project", incident.project, None),
+        ("Agent", incident.agent, None),
+        ("Platform", incident.platform, None),
+        ("Severity", incident.severity, severity_color(incident.severity)),
+        ("Failure type", incident.failure_type, None),
+    ]:
+        _append_field(
+            content,
+            label,
+            value,
+            width=16,
+            value_style=value_style,
+        )
 
     for label, value in [
         ("Expected", incident.expected_behavior),
@@ -113,14 +193,17 @@ def display_incident_detail(incident: Incident) -> None:
     ]:
         text = (value or "").strip()
         if text:
-            lines.append("")
-            lines.append(f"[cyan bold]{label}:[/]")
+            content.append("\n\n")
+            content.append(Text(f"{label}:", style="cyan bold"))
             for line in text.split("\n"):
-                lines.append(f"  {line}")
+                content.append("\n  ")
+                content.append(_literal_text(line))
 
     if incident.tags:
-        lines.append("")
-        lines.append(f"[cyan bold]Tags:[/]          {', '.join(incident.tags)}")
+        content.append("\n\n")
+        content.append(Text(f"{'Tags:':<16}", style="cyan bold"))
+        content.append(_literal_text(", ".join(incident.tags)))
+
     axes = [
         ("Capability area", incident.capability_area),
         ("Lifecycle stage", incident.lifecycle_stage),
@@ -131,54 +214,85 @@ def display_incident_detail(incident: Incident) -> None:
     ]
     shown_axes = [(label, value) for label, value in axes if value]
     if shown_axes:
-        lines.append("")
-        lines.append("[cyan bold]Structured axes:[/]")
+        content.append("\n\n")
+        content.append(Text("Structured axes:", style="cyan bold"))
         for label, value in shown_axes:
-            lines.append(f"  {label}: {value}")
-    if incident.observed_state:
-        lines.append("")
-        lines.append("[cyan bold]Observed state:[/]")
-        for key, value in incident.observed_state.items():
-            lines.append(f"  {key}: {value}")
-    present_refs = [field_name for field_name in PROOFHOUSE_REF_FIELDS if getattr(incident, field_name)]
-    if present_refs:
-        lines.append("")
-        lines.append(f"[cyan bold]Pointer refs:[/]    {', '.join(present_refs)}")
-    if incident.related_incidents:
-        lines.append(f"[cyan bold]Related:[/]       {', '.join(incident.related_incidents)}")
-    if incident.playbook_entry:
-        lines.append(f"[cyan bold]Playbook:[/]      {incident.playbook_entry}")
+            content.append(f"\n  {label}: ")
+            content.append(_literal_text(value))
 
-    content = "\n".join(lines)
-    console.print(Panel(content, title=f"Incident {incident.id}", border_style="cyan"))
+    if incident.observed_state:
+        content.append("\n\n")
+        content.append(Text("Observed state:", style="cyan bold"))
+        for key, value in incident.observed_state.items():
+            content.append("\n  ")
+            content.append(_literal_text(key))
+            content.append(": ")
+            content.append(_literal_text(value))
+
+    present_refs = [
+        field_name
+        for field_name in PROOFHOUSE_REF_FIELDS
+        if getattr(incident, field_name)
+    ]
+    if present_refs:
+        content.append("\n\n")
+        content.append(Text(f"{'Pointer refs:':<16}", style="cyan bold"))
+        content.append(_literal_text(", ".join(present_refs)))
+    if incident.related_incidents:
+        content.append("\n")
+        content.append(Text(f"{'Related:':<16}", style="cyan bold"))
+        content.append(_literal_text(", ".join(incident.related_incidents)))
+    if incident.playbook_entry:
+        content.append("\n")
+        content.append(Text(f"{'Playbook:':<16}", style="cyan bold"))
+        content.append(_literal_text(incident.playbook_entry))
+
+    title = Text("Incident ")
+    title.append(_literal_text(incident.id))
+    console.print(Panel(content, title=title, border_style="cyan"))
 
 
 def print_success(msg: str) -> None:
-    console.print(f"[green]{msg}[/green]")
+    console.print(_literal_text(msg, "green"))
+
+
+def print_warning(msg: str) -> None:
+    console.print(_literal_text(msg, "yellow"))
 
 
 def print_error(msg: str) -> None:
-    console.print(f"[bold red]Error:[/bold red] {msg}")
+    text = Text("Error:", style="bold red")
+    text.append(" ")
+    text.append(_literal_text(msg, "red"))
+    console.print(text)
 
 
 def print_info(msg: str) -> None:
-    console.print(f"[dim]{msg}[/dim]")
+    console.print(_literal_text(msg, "dim"))
 
 
 def _counter_table(title: str, counter: Counter, color: str = "cyan") -> Table:
     """Build a small Rich table from a Counter."""
-    table = Table(title=title, show_lines=False, padding=(0, 1), expand=True)
-    table.add_column("Value", style=color)
-    table.add_column("Count", justify="right", style="bold")
+    table = Table(
+        title=Text(title),
+        show_lines=False,
+        padding=(0, 1),
+        expand=True,
+    )
+    table.add_column(Text("Value"), style=color)
+    table.add_column(Text("Count"), justify="right", style="bold")
     for value, count in counter.most_common():
-        table.add_row(value or "(empty)", str(count))
+        table.add_row(
+            _literal_text(value or "(empty)"),
+            _literal_text(count),
+        )
     return table
 
 
 def display_stats(incidents: list[Incident]) -> None:
     """Display aggregate statistics for a list of incidents."""
     if not incidents:
-        console.print("[dim]No incidents to summarize.[/dim]")
+        console.print(Text("No incidents to summarize.", style="dim"))
         return
 
     total = len(incidents)
@@ -188,9 +302,10 @@ def display_stats(incidents: list[Incident]) -> None:
     by_platform = Counter(i.platform for i in incidents if i.platform)
     all_tags = Counter(tag for i in incidents for tag in i.tags)
     by_issue_class = Counter(i.issue_class for i in incidents if i.issue_class)
-    by_capability_area = Counter(i.capability_area for i in incidents if i.capability_area)
+    by_capability_area = Counter(
+        i.capability_area for i in incidents if i.capability_area
+    )
 
-    # Date range
     timestamps = sorted(i.timestamp for i in incidents if i.timestamp)
     date_range = ""
     if timestamps:
@@ -198,43 +313,67 @@ def display_stats(incidents: list[Incident]) -> None:
         last = timestamps[-1][:10]
         date_range = f"{first} to {last}" if first != last else first
 
-    # Header
-    header_lines = [f"[bold]Total incidents:[/bold] {total}"]
+    header = Text("Total incidents:", style="bold")
+    header.append(f" {total}")
     if date_range:
-        header_lines.append(f"[bold]Date range:[/bold] {date_range}")
-    console.print(Panel("\n".join(header_lines), title="Forge Stats", border_style="cyan"))
+        header.append("\n")
+        header.append(Text("Date range:", style="bold"))
+        header.append(" ")
+        header.append(_literal_text(date_range))
+    console.print(
+        Panel(
+            header,
+            title=Text("Forge Stats"),
+            border_style="cyan",
+        )
+    )
     console.print()
 
-    # Severity & project side by side
-    sev_table = Table(title="By Severity", show_lines=False, padding=(0, 1), expand=True)
-    sev_table.add_column("Severity")
-    sev_table.add_column("Count", justify="right", style="bold")
+    sev_table = Table(
+        title=Text("By Severity"),
+        show_lines=False,
+        padding=(0, 1),
+        expand=True,
+    )
+    sev_table.add_column(Text("Severity"))
+    sev_table.add_column(Text("Count"), justify="right", style="bold")
     for sev, count in by_severity.most_common():
-        sev_table.add_row(Text(sev, style=severity_color(sev)), str(count))
+        sev_table.add_row(
+            _literal_text(sev, severity_color(sev)),
+            _literal_text(count),
+        )
 
     proj_table = _counter_table("By Project", by_project, color="blue")
-
     console.print(Columns([sev_table, proj_table], equal=True))
     console.print()
 
-    # Type & platform side by side
     type_table = _counter_table("By Failure Type", by_type, color="magenta")
     plat_table = _counter_table("By Platform", by_platform, color="dim cyan")
-
     console.print(Columns([type_table, plat_table], equal=True))
 
     if by_issue_class or by_capability_area:
         console.print()
-        issue_table = _counter_table("By Issue Class", by_issue_class, color="yellow")
-        capability_table = _counter_table("By Capability Area", by_capability_area, color="cyan")
+        issue_table = _counter_table(
+            "By Issue Class",
+            by_issue_class,
+            color="yellow",
+        )
+        capability_table = _counter_table(
+            "By Capability Area",
+            by_capability_area,
+            color="cyan",
+        )
         console.print(Columns([issue_table, capability_table], equal=True))
 
-    # Top tags
     if all_tags:
         console.print()
-        tag_table = Table(title="Top Tags", show_lines=False, padding=(0, 1))
-        tag_table.add_column("Tag", style="green")
-        tag_table.add_column("Count", justify="right", style="bold")
+        tag_table = Table(
+            title=Text("Top Tags"),
+            show_lines=False,
+            padding=(0, 1),
+        )
+        tag_table.add_column(Text("Tag"), style="green")
+        tag_table.add_column(Text("Count"), justify="right", style="bold")
         for tag, count in all_tags.most_common(10):
-            tag_table.add_row(tag, str(count))
+            tag_table.add_row(_literal_text(tag), _literal_text(count))
         console.print(tag_table)

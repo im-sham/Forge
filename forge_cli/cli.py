@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import tempfile
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -26,13 +27,21 @@ from forge_cli.display import (
 from forge_cli.incident_store import (
     AmbiguousIncidentLookupError,
     DuplicateIncidentError,
+    IncidentEditConflictError,
+    IncidentScanResult,
+    IncidentLookupCorruptError,
+    IncidentLookupIncompleteError,
+    InvalidIncidentEditError,
+    UnsafeIncidentPathError,
     find_incident,
-    find_incident_path,
-    generate_id,
-    get_all_incidents,
-    list_incidents,
-    load_incident,
-    save_incident,
+    list_incidents_result,
+    quarantine_corrupt_incidents,
+    save_generated_incident,
+    safe_incident_relative_path,
+    safe_storage_error_type,
+    storage_error_has_recoverable_partial_state,
+    scan_incidents,
+    stage_incident_for_edit,
 )
 from forge_cli.models import (
     CAPABILITY_AREA_VALUES,
@@ -138,6 +147,23 @@ def _parse_optional_observed_state(value: str | None) -> dict | None:
         return parse_observed_state(value)
     except (TypeError, ValueError) as e:
         print_error(str(e))
+        raise typer.Exit(1)
+
+
+def _print_scan_diagnostics(result: IncidentScanResult) -> None:
+    print_info(f"Valid corpus incidents: {result.valid_corpus_count}")
+    print_info(f"Corrupt corpus files: {result.corrupt_corpus_count}")
+    print_info(f"Matched incidents: {result.matched_count}")
+    print_info(f"Returned incidents: {result.returned_count}")
+    print_info(f"Scan operational errors: {len(result.scan_errors)}")
+    for error in result.errors:
+        print_error(f"{error.path}: {error.error_type}")
+    for error in result.scan_errors:
+        print_error(f"Scan error - {error.path}: {error.error_type}")
+
+
+def _fail_on_scan_errors(result: IncidentScanResult) -> None:
+    if result.scan_errors:
         raise typer.Exit(1)
 
 
@@ -330,7 +356,7 @@ def log(
 
     # Build incident
     now = datetime.now(timezone.utc)
-    incident_id = generate_id(cfg.incidents_dir, now.date())
+    incident_id = ""
 
     try:
         incident = Incident(
@@ -373,11 +399,16 @@ def log(
         raise typer.Exit(0)
 
     try:
-        filepath = save_incident(incident, cfg.incidents_dir)
-    except DuplicateIncidentError as e:
-        print_error(str(e))
+        filepath = save_generated_incident(incident, cfg.incidents_dir)
+    except DuplicateIncidentError:
+        print_error("Duplicate incident id")
         raise typer.Exit(1)
-    print_success(f"Saved: {filepath}")
+    except OSError as exc:
+        print_error(f"Storage error: {safe_storage_error_type(exc)}")
+        raise typer.Exit(1)
+    relative_path = safe_incident_relative_path(filepath, cfg.incidents_dir)
+    print_success(f"Saved incident {incident.id}")
+    print_success(f"Saved: {relative_path}")
 
 
 @app.command("list")
@@ -408,21 +439,27 @@ def list_cmd(
         print_error(str(e))
         raise typer.Exit(1)
 
-    incidents = list_incidents(
-        cfg.incidents_dir,
-        project=project,
-        severity=severity,
-        since=since,
-        tag=tag,
-        issue_class=issue_class,
-        capability_area=capability_area,
-        lifecycle_stage=lifecycle_stage,
-        workflow_archetype=workflow_archetype,
-        blocked_use_class=blocked_use_class,
-        limit=limit,
-    )
+    try:
+        result = list_incidents_result(
+            cfg.incidents_dir,
+            project=project,
+            severity=severity,
+            since=since,
+            tag=tag,
+            issue_class=issue_class,
+            capability_area=capability_area,
+            lifecycle_stage=lifecycle_stage,
+            workflow_archetype=workflow_archetype,
+            blocked_use_class=blocked_use_class,
+            limit=limit,
+        )
+    except ValueError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
 
-    display_incident_table(incidents)
+    _print_scan_diagnostics(result)
+    _fail_on_scan_errors(result)
+    display_incident_table(list(result.incidents))
 
 
 @app.command()
@@ -438,7 +475,11 @@ def show(
 
     try:
         incident = find_incident(cfg.incidents_dir, incident_id)
-    except AmbiguousIncidentLookupError as e:
+    except (
+        AmbiguousIncidentLookupError,
+        IncidentLookupCorruptError,
+        IncidentLookupIncompleteError,
+    ) as e:
         print_error(str(e))
         raise typer.Exit(1)
     if incident is None:
@@ -462,7 +503,11 @@ def ref_cmd(
 
     try:
         incident = find_incident(cfg.incidents_dir, incident_id)
-    except AmbiguousIncidentLookupError as e:
+    except (
+        AmbiguousIncidentLookupError,
+        IncidentLookupCorruptError,
+        IncidentLookupIncompleteError,
+    ) as e:
         print_error(str(e))
         raise typer.Exit(1)
     if incident is None:
@@ -477,41 +522,66 @@ def ref_cmd(
 def edit(
     incident_id: str = typer.Argument(help="Incident ID (e.g., '2026-03-04-001' or '001')"),
 ) -> None:
-    """Open an incident in $EDITOR for modification."""
+    """Edit an isolated copy and atomically publish after validation."""
     try:
         cfg = load_config()
     except FileNotFoundError as e:
         print_error(str(e))
         raise typer.Exit(1)
 
+    editor = os.environ.get("EDITOR", "vi")
+    relative_path: str | None = None
     try:
-        path = find_incident_path(cfg.incidents_dir, incident_id)
-    except AmbiguousIncidentLookupError as e:
+        with stage_incident_for_edit(cfg.incidents_dir, incident_id) as session:
+            if session is None:
+                print_error(f"No incident found matching '{incident_id}'.")
+                raise typer.Exit(1)
+            relative_path = session.relative_path
+            print_info(
+                f"Opening {Path(editor).name or 'editor'} for "
+                f"{session.relative_path}."
+            )
+            try:
+                subprocess.run(
+                    [editor, str(session.stage_path)],
+                    check=True,
+                    close_fds=True,
+                )
+            except subprocess.CalledProcessError:
+                print_error("Editor exited with an error.")
+                raise typer.Exit(1)
+            except OSError:
+                print_error("Editor could not be started.")
+                raise typer.Exit(1)
+            try:
+                updated = session.publish()
+            except InvalidIncidentEditError:
+                print_error("Edited file has invalid YAML.")
+                raise typer.Exit(1)
+    except (
+        AmbiguousIncidentLookupError,
+        IncidentLookupCorruptError,
+        IncidentLookupIncompleteError,
+    ) as e:
         print_error(str(e))
         raise typer.Exit(1)
-    if path is None:
-        print_error(f"No incident found matching '{incident_id}'.")
+    except IncidentEditConflictError:
+        print_error("Incident changed while the editor was open; edit not applied.")
         raise typer.Exit(1)
-
-    editor = os.environ.get("EDITOR", "vi")
-    console.print(f"[bold]Opening {path.name} in {editor}...[/bold]")
-
-    try:
-        subprocess.run([editor, str(path)], check=True)
-    except subprocess.CalledProcessError:
-        print_error("Editor exited with an error.")
+    except UnsafeIncidentPathError as e:
+        print_error(f"Cannot safely edit incident: {e}")
         raise typer.Exit(1)
-
-    # Validate the edited file still parses
-    try:
-        updated = load_incident(path)
-    except Exception as e:
-        print_error(f"Edited file has invalid YAML: {e}")
-        print_info(f"File is at: {path}")
+    except OSError as exc:
+        target = f" (target: {relative_path})" if relative_path is not None else ""
+        print_error(f"Storage error: {safe_storage_error_type(exc)}{target}")
+        if storage_error_has_recoverable_partial_state(exc):
+            print_error(
+                "Recoverable partial state: RecoverablePartialStateError"
+            )
         raise typer.Exit(1)
 
     display_incident_detail(updated)
-    print_success(f"Updated: {path}")
+    print_success(f"Updated: {relative_path}")
 
 
 @app.command()
@@ -534,8 +604,12 @@ def analyze(
 
     from forge_cli.providers import get_provider
 
-    # Load incidents
-    all_incidents = get_all_incidents(cfg.incidents_dir)
+    scan = scan_incidents(cfg.incidents_dir)
+    if scan.errors or scan.scan_errors:
+        _print_scan_diagnostics(scan)
+        print_error("Incident corpus is incomplete; analysis was not started.")
+        raise typer.Exit(1)
+    all_incidents = list(scan.incidents)
 
     if not full and since:
         all_incidents = [i for i in all_incidents if i.timestamp >= since]
@@ -609,6 +683,102 @@ def analyze(
         print_info(f"  ... ({len(report.split(chr(10)))} lines total)")
 
 
+def _corrupt_file_preview(label: str, dry_run: bool) -> None:
+    try:
+        cfg = load_config()
+    except FileNotFoundError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+    result = scan_incidents(cfg.incidents_dir)
+    _print_scan_diagnostics(result)
+    mode = "dry-run" if dry_run else "preview"
+    print_info(f"{label} {mode}: {result.corrupt_corpus_count} corrupt file(s)")
+    _fail_on_scan_errors(result)
+
+
+@app.command()
+def validate(
+    strict: bool = typer.Option(
+        False,
+        "--strict",
+        help="Exit nonzero when any corrupt incident file is found",
+    ),
+) -> None:
+    """Validate the incident corpus without modifying files."""
+    try:
+        cfg = load_config()
+    except FileNotFoundError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+    result = scan_incidents(cfg.incidents_dir)
+    _print_scan_diagnostics(result)
+    _fail_on_scan_errors(result)
+    if strict and result.errors:
+        raise typer.Exit(1)
+
+
+@app.command()
+def repair(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Explicitly preview repair candidates without writing",
+    ),
+) -> None:
+    """Preview corrupt-file repair candidates without modifying files."""
+    _corrupt_file_preview("Repair", dry_run)
+
+
+@app.command()
+def quarantine(
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Explicitly preview quarantine candidates without writing",
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Move freshly verified corrupt files into the data-root quarantine",
+    ),
+) -> None:
+    """Preview quarantine candidates, or explicitly move them with --apply."""
+    if apply and dry_run:
+        print_error("--apply and --dry-run cannot be combined.")
+        raise typer.Exit(2)
+    if not apply:
+        _corrupt_file_preview("Quarantine", dry_run)
+        return
+
+    try:
+        cfg = load_config()
+    except FileNotFoundError as e:
+        print_error(str(e))
+        raise typer.Exit(1)
+
+    result = quarantine_corrupt_incidents(cfg.incidents_dir)
+    _print_scan_diagnostics(result.scan)
+    if result.scan.scan_errors:
+        print_error("Quarantine was not started because the scan was incomplete.")
+        raise typer.Exit(1)
+
+    print_info(f"Quarantine apply: {len(result.moved)} file(s) moved")
+    for relative_path in result.moved:
+        print_success(f"Moved: {relative_path}")
+    partial_paths = set(result.partial)
+    for relative_path in result.partial:
+        print_error(
+            f"Partial move: {relative_path} (RecoverablePartialStateError)"
+        )
+    for failure in result.failures:
+        if failure.path not in partial_paths:
+            print_error(f"Failed: {failure.path} ({failure.error_type})")
+    if result.failures:
+        raise typer.Exit(1)
+
+
 @app.command()
 def stats(
     project: Optional[str] = typer.Option(None, "--project", "-p", help="Filter by project"),
@@ -635,26 +805,22 @@ def stats(
         print_error(str(e))
         raise typer.Exit(1)
 
-    incidents = get_all_incidents(cfg.incidents_dir)
+    result = list_incidents_result(
+        cfg.incidents_dir,
+        project=project,
+        severity=severity,
+        since=since,
+        issue_class=issue_class,
+        capability_area=capability_area,
+        lifecycle_stage=lifecycle_stage,
+        workflow_archetype=workflow_archetype,
+        blocked_use_class=blocked_use_class,
+        limit=None,
+    )
 
-    if project:
-        incidents = [i for i in incidents if i.project == project]
-    if severity:
-        incidents = [i for i in incidents if i.severity == severity]
-    if since:
-        incidents = [i for i in incidents if i.timestamp >= since]
-    if issue_class:
-        incidents = [i for i in incidents if i.issue_class == issue_class]
-    if capability_area:
-        incidents = [i for i in incidents if i.capability_area == capability_area]
-    if lifecycle_stage:
-        incidents = [i for i in incidents if i.lifecycle_stage == lifecycle_stage]
-    if workflow_archetype:
-        incidents = [i for i in incidents if i.workflow_archetype == workflow_archetype]
-    if blocked_use_class:
-        incidents = [i for i in incidents if i.blocked_use_class == blocked_use_class]
-
-    display_stats(incidents)
+    _print_scan_diagnostics(result)
+    _fail_on_scan_errors(result)
+    display_stats(list(result.incidents))
 
 
 # --- Playbook subcommand ---
