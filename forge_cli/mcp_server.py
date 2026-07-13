@@ -12,11 +12,14 @@ from forge_cli.config import load_config
 from forge_cli.incident_store import (
     AmbiguousIncidentLookupError,
     DuplicateIncidentError,
+    IncidentScanResult,
+    IncidentLookupCorruptError,
+    IncidentLookupIncompleteError,
     find_incident,
-    generate_id,
-    get_all_incidents,
-    list_incidents,
-    save_incident,
+    list_incidents_result,
+    save_generated_incident,
+    safe_incident_relative_path,
+    safe_storage_error_type,
 )
 from forge_cli.models import (
     CAPABILITY_AREA_VALUES,
@@ -82,6 +85,36 @@ def _incident_to_text(incident: Incident) -> str:
         lines.append(f"Related: {', '.join(incident.related_incidents)}")
     if incident.playbook_entry:
         lines.append(f"Playbook: {incident.playbook_entry}")
+    return "\n".join(lines)
+
+
+def _scan_report(result: IncidentScanResult) -> str:
+    lines = [
+        f"Valid corpus incidents: {result.valid_corpus_count}",
+        f"Corrupt corpus files: {result.corrupt_corpus_count}",
+        f"Matched incidents: {result.matched_count}",
+        f"Returned incidents: {result.returned_count}",
+        f"Scan operational errors: {len(result.scan_errors)}",
+    ]
+    lines.extend(f"{error.path}: {error.error_type}" for error in result.errors)
+    lines.extend(
+        f"Scan error - {error.path}: {error.error_type}" for error in result.scan_errors
+    )
+    return "\n".join(lines)
+
+
+def _incomplete_scan_report(result: IncidentScanResult) -> str:
+    lines = [
+        "Incident corpus scan incomplete.",
+        f"Scan operational errors: {len(result.scan_errors)}",
+    ]
+    lines.extend(
+        f"Corrupt file - {error.path}: {error.error_type}" for error in result.errors
+    )
+    lines.extend(
+        f"Scan error - {error.path}: {error.error_type}"
+        for error in result.scan_errors
+    )
     return "\n".join(lines)
 
 
@@ -201,7 +234,7 @@ def forge_log(
         return str(e)
 
     now = datetime.now(timezone.utc)
-    incident_id = generate_id(cfg.incidents_dir, now.date())
+    incident_id = ""
 
     tag_list = [t.strip() for t in tags.split(",") if t.strip()] if tags else []
     related_list = [r.strip() for r in related_incidents.split(",") if r.strip()] if related_incidents else []
@@ -238,10 +271,13 @@ def forge_log(
         return str(e)
 
     try:
-        filepath = save_incident(incident, cfg.incidents_dir)
-    except DuplicateIncidentError as e:
-        return str(e)
-    return f"Incident logged: {incident_id}\nSaved to: {filepath}"
+        filepath = save_generated_incident(incident, cfg.incidents_dir)
+    except DuplicateIncidentError:
+        return "Duplicate incident id"
+    except OSError as exc:
+        return f"Storage error: {safe_storage_error_type(exc)}"
+    relative_path = safe_incident_relative_path(filepath, cfg.incidents_dir)
+    return f"Incident logged: {incident.id}\nSaved to: {relative_path}"
 
 
 @mcp.tool()
@@ -271,8 +307,10 @@ def forge_list(
         blocked_use_class: Filter by blocked use class
         limit: Maximum number of incidents to return (default 10)
     """
+    if limit < 0:
+        return "Invalid limit: must be non-negative"
     cfg = load_config()
-    incidents = list_incidents(
+    result = list_incidents_result(
         cfg.incidents_dir,
         project=project or None,
         severity=severity or None,
@@ -285,19 +323,23 @@ def forge_list(
         blocked_use_class=blocked_use_class or None,
         limit=limit,
     )
+    if result.scan_errors:
+        return _incomplete_scan_report(result)
+    report = _scan_report(result)
 
-    if not incidents:
-        return "No incidents found matching the given filters."
+    if not result.incidents:
+        return f"No incidents found matching the given filters.\n{report}"
 
     results = []
-    for inc in incidents:
+    for inc in result.incidents:
         summary = (inc.actual_behavior or "").strip().split("\n")[0][:80]
         results.append(
             f"[{inc.id}] {inc.project}/{inc.platform} | {inc.severity} | {inc.failure_type}"
             f" | {inc.issue_class or '-'} | {summary}"
         )
 
-    return f"Found {len(incidents)} incident(s):\n\n" + "\n".join(results)
+    marker = f"Found {len(result.incidents)} incident(s):"
+    return f"{marker}\n{report}\n\n" + "\n".join(results)
 
 
 @mcp.tool()
@@ -310,7 +352,11 @@ def forge_show(incident_id: str) -> str:
     cfg = load_config()
     try:
         incident = find_incident(cfg.incidents_dir, incident_id)
-    except AmbiguousIncidentLookupError as e:
+    except (
+        AmbiguousIncidentLookupError,
+        IncidentLookupCorruptError,
+        IncidentLookupIncompleteError,
+    ) as e:
         return str(e)
 
     if incident is None:
@@ -329,7 +375,11 @@ def forge_incident_ref(incident_id: str) -> str:
     cfg = load_config()
     try:
         incident = find_incident(cfg.incidents_dir, incident_id)
-    except AmbiguousIncidentLookupError as e:
+    except (
+        AmbiguousIncidentLookupError,
+        IncidentLookupCorruptError,
+        IncidentLookupIncompleteError,
+    ) as e:
         return str(e)
 
     if incident is None:
@@ -356,19 +406,21 @@ def forge_stats(
     from collections import Counter
 
     cfg = load_config()
-    incidents = get_all_incidents(cfg.incidents_dir)
-
-    if project:
-        incidents = [i for i in incidents if i.project == project]
-    if severity:
-        incidents = [i for i in incidents if i.severity == severity]
-    if issue_class:
-        incidents = [i for i in incidents if i.issue_class == issue_class]
-    if capability_area:
-        incidents = [i for i in incidents if i.capability_area == capability_area]
+    result = list_incidents_result(
+        cfg.incidents_dir,
+        project=project or None,
+        severity=severity or None,
+        issue_class=issue_class or None,
+        capability_area=capability_area or None,
+        limit=None,
+    )
+    if result.scan_errors:
+        return _incomplete_scan_report(result)
+    report = _scan_report(result)
+    incidents = result.incidents
 
     if not incidents:
-        return "No incidents found."
+        return f"Total incidents: 0\n{report}\n\nNo incidents found."
 
     by_severity = Counter(i.severity for i in incidents)
     by_type = Counter(i.failure_type for i in incidents)
@@ -378,7 +430,7 @@ def forge_stats(
     by_capability_area = Counter(i.capability_area for i in incidents if i.capability_area)
     all_tags = Counter(tag for i in incidents for tag in i.tags)
 
-    lines = [f"Total incidents: {len(incidents)}", ""]
+    lines = [f"Total incidents: {len(incidents)}", report, ""]
 
     lines.append("By Severity:")
     for sev, count in by_severity.most_common():
