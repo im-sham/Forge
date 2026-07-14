@@ -50,7 +50,10 @@ class ForgeConfig:
 
     @property
     def templates_dir(self) -> Path:
-        return self.root / "templates"
+        source_templates = self.root / "templates"
+        if source_templates.is_dir():
+            return source_templates
+        return Path(__file__).resolve().parent / "resources"
 
     @property
     def playbook_dir(self) -> Path:
@@ -89,12 +92,15 @@ def _apply_config_values(config: ForgeConfig, data: dict) -> ForgeConfig:
 
 def load_config(root: Path | None = None) -> ForgeConfig:
     """Load forge configuration from config files and environment overrides."""
+    env_data_root = os.environ.get("FORGE_DATA_ROOT")
     if root is None:
         root = find_project_root()
+        if root is None and env_data_root:
+            root = Path(env_data_root).expanduser()
     if root is None:
         raise FileNotFoundError(
             "Could not find forge project root. "
-            "Run forge from within the forge directory or a subdirectory."
+            "Run forge from within the forge directory or set FORGE_DATA_ROOT."
         )
 
     root = root.expanduser().resolve()
@@ -108,7 +114,6 @@ def load_config(root: Path | None = None) -> ForgeConfig:
             data = yaml.safe_load(f) or {}
         config = _apply_config_values(config, data)
 
-    env_data_root = os.environ.get("FORGE_DATA_ROOT")
     if env_data_root:
         config.data_root = Path(env_data_root).expanduser()
         if not config.data_root.is_absolute():

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "source_commit": "1d4c5bd9bf977b45a9b8ca792dcd7cd2e1a82c47",
+  "source_tree": "b9ea496eb06ee676a3c86e8aefdb0b3dcfff717b",
+  "recorded_on": "2026-07-14",
+  "prior_resolution": "No committed application lock; CI and editable installs resolved lower bounds against the package index at install time.",
+  "prior_artifact": "No immutable wheel digest or retained deployable artifact is recorded in the repository.",
+  "rollback": "Revert the WP-RI-05 commit and rebuild from source commit 1d4c5bd9bf977b45a9b8ca792dcd7cd2e1a82c47. That restores the earlier non-reproducible resolver behavior and is not a production promotion claim.",
+  "acceptance_status": "requires-human-disposition",
+  "acceptance_exception_request": "The WP-RI-05 prior-lock/image retention criterion cannot be satisfied retroactively because neither artifact existed. Accept the verified source commit/tree as the only truthful historical rollback pointer, while requiring every post-WP-RI-05 accepted artifact to retain its wheel, exact locks, and digests."
+}
