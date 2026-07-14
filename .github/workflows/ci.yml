@@ -100,11 +100,19 @@ jobs:
             "${runtime_python}" scripts/verify_dependency_artifacts.py --check-environment "${surface}"
             case "${surface}" in
               core)
-                (cd "${smoke_root}" && FORGE_DATA_ROOT="${data_root}" "${runtime_forge}" list >/dev/null)
+                if [ "${RUNNER_OS}" = "Windows" ]; then
+                  (cd "${smoke_root}" && "${runtime_forge}" --help >/dev/null)
+                else
+                  (cd "${smoke_root}" && FORGE_DATA_ROOT="${data_root}" "${runtime_forge}" list >/dev/null)
+                fi
                 ;;
               mcp)
-                (cd "${smoke_root}" && FORGE_DATA_ROOT="${data_root}" "${runtime_python}" -c "from forge_cli.mcp_server import forge_list, forge_log; result = forge_log(project='ci', agent='wheel-smoke', severity='functional', failure_type='integration_failure', expected_behavior='packaged runtime works', actual_behavior='packaged runtime works'); assert result.startswith('Incident logged:'); assert 'Found 1 incident' in forge_list()")
-                (cd "${smoke_root}" && FORGE_DATA_ROOT="${data_root}" "${runtime_forge}" analyze --prepare-only >/dev/null)
+                if [ "${RUNNER_OS}" = "Windows" ]; then
+                  (cd "${smoke_root}" && "${runtime_python}" -c "from forge_cli.mcp_server import forge_schema; assert 'severity_levels' in forge_schema()")
+                else
+                  (cd "${smoke_root}" && FORGE_DATA_ROOT="${data_root}" "${runtime_python}" -c "from forge_cli.mcp_server import forge_list, forge_log; result = forge_log(project='ci', agent='wheel-smoke', severity='functional', failure_type='integration_failure', expected_behavior='packaged runtime works', actual_behavior='packaged runtime works'); assert result.startswith('Incident logged:'); assert 'Found 1 incident' in forge_list()")
+                  (cd "${smoke_root}" && FORGE_DATA_ROOT="${data_root}" "${runtime_forge}" analyze --prepare-only >/dev/null)
+                fi
                 ;;
               anthropic)
                 (cd "${smoke_root}" && ANTHROPIC_API_KEY="ci-offline-key" "${runtime_python}" -c "from forge_cli.providers import AnthropicProvider; assert AnthropicProvider(model='ci-offline').model == 'ci-offline'")

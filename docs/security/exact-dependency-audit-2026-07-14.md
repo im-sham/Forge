@@ -37,14 +37,18 @@ CI builds the wheel in a no-pip virtual environment containing exactly
 `build.lock`, then installs each deployable lock into a clean environment that
 retains `pip` only as explicit bootstrap tooling, with hashes and no dependency
 resolution. It installs the wheel with `--no-deps`, runs `uv pip check`, and
-verifies the installed distribution set in both directions. Behavioral smoke
-runs from outside the checkout against an external data root: a CLI corpus read,
-an MCP log/list round trip, packaged-template analysis preparation, and offline
-provider construction. Production parity and advisory audits are matrixed on
-Python 3.11, 3.12, and 3.13 across Linux, macOS, and Windows so active PEP 508
-marker branches are exercised. Full tests run on Python 3.11, 3.12, and 3.13
-from the exact development lock. MCP dependencies are deliberately present in
-`dev.lock` so MCP tests cannot silently skip.
+verifies the installed distribution set in both directions. On supported Linux
+and macOS data-store runtimes, behavioral smoke runs from outside the checkout
+against an external data root: a CLI corpus read, an MCP log/list round trip,
+packaged-template analysis preparation, and offline provider construction.
+Forge's fail-closed incident store requires POSIX path and rename primitives, so
+Windows is an install, import, CLI-help, MCP-schema, provider, dependency-audit,
+and marker-coverage target rather than a supported data-store runtime.
+Production parity and advisory audits are matrixed on Python 3.11, 3.12, and
+3.13 across Linux, macOS, and Windows so active PEP 508 marker branches are
+exercised. Full tests run on Python 3.11, 3.12, and 3.13 from the exact
+development lock. MCP dependencies are deliberately present in `dev.lock` so
+MCP tests cannot silently skip.
 
 ## Audit disposition
 

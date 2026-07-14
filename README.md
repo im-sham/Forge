@@ -30,6 +30,13 @@ Forge can reference Workflow Context, Readiness, and Governance records by point
 
 ## Install
 
+Forge supports data-bearing CLI and MCP operation on Linux and macOS. Its
+fail-closed local incident store depends on POSIX `O_NOFOLLOW`, `O_DIRECTORY`,
+descriptor-relative file operations, and native no-replace rename semantics.
+Windows packages are built, installed, dependency-audited, and import-smoked in
+CI to validate platform markers, but Windows incident-store operation is not a
+supported runtime.
+
 ```bash
 git clone https://github.com/im-sham/Forge.git
 cd Forge
@@ -367,10 +374,12 @@ python scripts/verify_dependency_artifacts.py --generate
 python scripts/verify_dependency_artifacts.py --check-lock
 ```
 
-CI builds the wheel in an exact isolated build environment, proves behavioral
-clean installs for every deployment surface on Python 3.11-3.13 across Linux,
-macOS, and Windows, audits each target without ignore flags, and uploads
-artifact-bound CycloneDX inventories plus the wheel and exact locks.
+CI builds the wheel in an exact isolated build environment and proves exact
+install parity for every deployment surface on Python 3.11-3.13 across Linux,
+macOS, and Windows. Linux and macOS additionally run data-bearing CLI, MCP, and
+packaged-prompt smoke flows. Windows runs import, CLI-help, MCP-schema, and
+provider-construction smoke only. Every target is audited without ignore flags
+and uploads artifact-bound CycloneDX inventories plus the wheel and exact locks.
 See `docs/security/exact-dependency-audit-2026-07-14.md` for the current
 disposition and rollback boundary.
 

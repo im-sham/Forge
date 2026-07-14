@@ -21,6 +21,8 @@ def test_ci_workflow_has_dependency_security_gate() -> None:
     assert "--generate-sboms" in workflow
     assert "--validate-sboms" in workflow
     assert "--check-environment" in workflow
+    assert '"${runtime_forge}" --help' in workflow
+    assert "from forge_cli.mcp_server import forge_schema" in workflow
     assert "-m pip_audit" in workflow
     assert "--ignore-vuln" not in workflow
     assert 'pip install -e ".[dev]' not in workflow
