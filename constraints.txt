@@ -1,0 +1,17 @@
+# Python 3.11 CI dependency constraints.
+# Regenerate from a clean environment with:
+#   python -m pip install -e ".[dev]"
+#   python -m pip freeze --exclude-editable
+annotated-doc==0.0.4
+iniconfig==2.3.0
+markdown-it-py==4.2.0
+mdurl==0.1.2
+packaging==26.2
+pluggy==1.6.0
+Pygments==2.20.0
+pytest==9.0.3
+PyYAML==6.0.3
+rich==15.0.0
+ruff==0.15.16
+shellingham==1.5.4
+typer==0.26.7
