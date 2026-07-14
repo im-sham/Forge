@@ -684,6 +684,9 @@ def _require_fresh_corrupt_file(
 
 
 def _load_native_rename_noreplace():
+    if sys.platform != "darwin" and not sys.platform.startswith("linux"):
+        return None
+
     try:
         libc = ctypes.CDLL(None, use_errno=True)
     except OSError:
