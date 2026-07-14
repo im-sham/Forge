@@ -11,6 +11,7 @@ from scripts.verify_dependency_artifacts import (
     ADVISORY_EXCEPTIONS,
     DEPLOYABLE_SURFACES,
     DependencyArtifactError,
+    _read_normalized_text,
     active_lock_entries,
     dependency_sbom,
     lock_path,
@@ -41,6 +42,15 @@ def test_optional_surfaces_do_not_contaminate_core() -> None:
 
 def test_packaged_analysis_prompt_matches_checkout_source() -> None:
     validate_packaged_resources()
+
+
+def test_lock_text_comparison_normalizes_platform_newlines(tmp_path: Path) -> None:
+    lf = tmp_path / "lf.lock"
+    crlf = tmp_path / "crlf.lock"
+    lf.write_bytes(b"package==1.0 \\\n    --hash=sha256:abc\n")
+    crlf.write_bytes(b"package==1.0 \\\r\n    --hash=sha256:abc\r\n")
+
+    assert _read_normalized_text(lf) == _read_normalized_text(crlf)
 
 
 def test_sboms_are_deterministic_and_match_each_surface(tmp_path: Path) -> None:

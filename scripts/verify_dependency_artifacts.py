@@ -87,8 +87,13 @@ def _run(command: Sequence[str]) -> None:
     subprocess.run(command, cwd=ROOT, check=True)
 
 
+def _read_normalized_text(path: Path) -> str:
+    """Read UTF-8 text with platform checkout newlines normalized."""
+    return path.read_text(encoding="utf-8")
+
+
 def check_uv_version() -> None:
-    """Require the exact resolver/exporter version that owns committed lock bytes."""
+    """Require the exact resolver/exporter version that owns committed lock content."""
     if shutil.which("uv") is None:
         raise DependencyArtifactError(f"uv {UV_VERSION} is required")
     result = subprocess.run(
@@ -309,7 +314,13 @@ def check_locks() -> None:
         for surface in SURFACE_EXPORTS:
             candidate = temporary_dir / lock_path(surface).name
             _run(_uv_export_command(candidate, surface))
-            if candidate.read_bytes() != lock_path(surface).read_bytes():
+            # Git may materialize committed LF text as CRLF on Windows, while
+            # uv writes LF. Compare normalized UTF-8 content so the drift gate
+            # remains strict about pins, hashes, and markers without treating
+            # checkout newline policy as dependency drift.
+            if _read_normalized_text(candidate) != _read_normalized_text(
+                lock_path(surface)
+            ):
                 raise DependencyArtifactError(
                     f"{lock_path(surface).relative_to(ROOT)} has drifted; regenerate with "
                     "python scripts/verify_dependency_artifacts.py --generate"
