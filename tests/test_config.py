@@ -4,6 +4,7 @@ from forge_cli.config import load_config
 
 
 def test_load_config_defaults_data_root_to_repo_root(tmp_path):
+    (tmp_path / "templates").mkdir()
     cfg = load_config(root=tmp_path)
 
     assert cfg.data_root == tmp_path
@@ -35,3 +36,15 @@ def test_load_config_env_data_root_override_wins(tmp_path, monkeypatch):
     cfg = load_config(root=tmp_path)
 
     assert cfg.data_root == tmp_path / "env-data"
+
+
+def test_load_config_supports_installed_runtime_with_external_data_root(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("FORGE_DATA_ROOT", str(tmp_path / "forge-data"))
+
+    cfg = load_config()
+
+    assert cfg.root == tmp_path / "forge-data"
+    assert cfg.data_root == tmp_path / "forge-data"
+    assert cfg.templates_dir.name == "resources"
+    assert (cfg.templates_dir / "analysis-prompt.md").is_file()

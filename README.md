@@ -30,12 +30,20 @@ Forge can reference Workflow Context, Readiness, and Governance records by point
 
 ## Install
 
+Forge supports data-bearing CLI and MCP operation on Linux and macOS. Its
+fail-closed local incident store depends on POSIX `O_NOFOLLOW`, `O_DIRECTORY`,
+descriptor-relative file operations, and native no-replace rename semantics.
+Windows packages are built, installed, dependency-audited, and import-smoked in
+CI to validate platform markers, but Windows incident-store operation is not a
+supported runtime.
+
 ```bash
 git clone https://github.com/im-sham/Forge.git
 cd Forge
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev,mcp]"
+pip install "uv==0.11.28"
+uv sync --frozen --extra dev --extra mcp
 ```
 
 ## Quick Start
@@ -318,7 +326,7 @@ See `examples/document-operations/redaction-miss-incident.yml` and `examples/cla
 ### API-backed analysis
 
 ```bash
-pip install -e ".[anthropic]"   # or .[openai]
+uv sync --frozen --no-default-groups --extra anthropic  # or --extra openai
 export ANTHROPIC_API_KEY=sk-...
 forge analyze
 ```
@@ -341,10 +349,39 @@ active Forge data root.
 ## Development
 
 ```bash
-pip install -e ".[dev,mcp]"
+uv sync --frozen --extra dev --extra mcp
 ruff check forge_cli/ tests/
 pytest tests/ -v
 ```
+
+## Reproducible deployment sets
+
+`pyproject.toml` retains the package's supported lower bounds. `uv.lock` is the
+universal application resolution, while `requirements/core.lock`,
+`mcp.lock`, `anthropic.lock`, and `openai.lock` are separate hash-locked
+deployment exports. Development, wheel-build, and audit tools have independent
+locks and are excluded from production audits.
+
+An installed wheel can run outside the source checkout when `FORGE_DATA_ROOT`
+points to its external incident-data directory. The analysis prompt is bundled
+with the package; a checkout-local `templates/` directory still overrides it
+for source development.
+
+Regenerate or verify the committed artifacts with:
+
+```bash
+python scripts/verify_dependency_artifacts.py --generate
+python scripts/verify_dependency_artifacts.py --check-lock
+```
+
+CI builds the wheel in an exact isolated build environment and proves exact
+install parity for every deployment surface on Python 3.11-3.13 across Linux,
+macOS, and Windows. Linux and macOS additionally run data-bearing CLI, MCP, and
+packaged-prompt smoke flows. Windows runs import, CLI-help, MCP-schema, and
+provider-construction smoke only. Every target is audited without ignore flags
+and uploads artifact-bound CycloneDX inventories plus the wheel and exact locks.
+See `docs/security/exact-dependency-audit-2026-07-14.md` for the current
+disposition and rollback boundary.
 
 ## Project Structure
 

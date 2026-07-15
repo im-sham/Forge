@@ -11,7 +11,8 @@ git clone https://github.com/im-sham/Forge.git
 cd Forge
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[mcp]"
+pip install "uv==0.11.28"
+uv sync --frozen --no-default-groups --extra mcp
 ```
 
 ### 2. Add Forge MCP server to Codex config

@@ -73,7 +73,7 @@ def test_native_noreplace_loader_selects_exact_symbol_and_flag(
     ]
 
 
-@pytest.mark.parametrize("platform", ["darwin", "linux", "win32"])
+@pytest.mark.parametrize("platform", ["darwin", "linux"])
 def test_native_noreplace_loader_fails_closed_without_platform_symbol(
     monkeypatch, platform
 ):
@@ -81,6 +81,17 @@ def test_native_noreplace_loader_fails_closed_without_platform_symbol(
     monkeypatch.setattr(
         incident_store.ctypes, "CDLL", lambda *_args, **_kwargs: _FakeLibc()
     )
+
+    assert incident_store._load_native_rename_noreplace() is None
+
+
+def test_native_noreplace_loader_skips_libc_on_windows(monkeypatch):
+    monkeypatch.setattr(incident_store.sys, "platform", "win32")
+
+    def fail_if_called(*_args, **_kwargs):
+        pytest.fail("ctypes.CDLL must not be called on unsupported platforms")
+
+    monkeypatch.setattr(incident_store.ctypes, "CDLL", fail_if_called)
 
     assert incident_store._load_native_rename_noreplace() is None
 
