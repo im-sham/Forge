@@ -34,12 +34,17 @@ python scripts/verify_dependency_artifacts.py --check-lock
 ```
 
 CI builds the wheel in a no-pip virtual environment containing exactly
-`build.lock`, then installs each deployable lock into a clean environment that
-retains `pip` only as explicit bootstrap tooling, with hashes and no dependency
-resolution. It installs the wheel with `--no-deps`, runs `uv pip check`, and
-verifies the installed distribution set in both directions. On supported Linux
-and macOS data-store runtimes, behavioral smoke runs from outside the checkout
-against an external data root: a CLI corpus read, an MCP log/list round trip,
+`build.lock`, then installs each deployable lock into a clean environment with
+hashes and no dependency resolution. Parity permits explicit environment
+bootstrap tooling (`pip`, `setuptools`, and `wheel`) outside the selected Forge
+application lock. Those tools are also outside the generated language-package
+SBOM, which inventories the Forge wheel and locked application dependencies
+rather than the complete base image or environment. Every locked application
+dependency must exactly match the selected lock. CI installs the wheel with
+`--no-deps`, runs `uv pip check`, and verifies the locked application dependency
+set in both directions. On supported Linux and macOS data-store runtimes,
+behavioral smoke runs from outside the checkout against an external data root: a
+CLI corpus read, an MCP log/list round trip,
 packaged-template analysis preparation, and offline provider construction.
 Forge's fail-closed incident store requires POSIX path and rename primitives, so
 Windows is an install, import, CLI-help, MCP-schema, provider, dependency-audit,
@@ -54,11 +59,15 @@ MCP tests cannot silently skip.
 
 Local `pip-audit 2.10.1` verification on macOS/Python 3.13 on 2026-07-14
 reported no known vulnerabilities in the active subset of any of the four
-exact deployment sets. The hosted matrix is the acceptance evidence for all
-declared target combinations, including Windows-only packages; it remains
-pending until this draft branch runs in GitHub. CI uses no advisory ignore flags
-and audits optional surfaces separately so provider or MCP dependencies cannot
-contaminate the core result.
+exact deployment sets. GitHub Actions run
+[`29345791640`](https://github.com/im-sham/Forge/actions/runs/29345791640)
+completed successfully on 2026-07-14 for head
+`3ebdcda487d7ff0fd72e84c68d86911898c081cb`: all 12 jobs passed, comprising
+three Python test jobs and nine dependency-security jobs across Linux, macOS,
+and Windows on Python 3.11, 3.12, and 3.13. This is CI verification only; it is
+not evidence of deployment, production operation, or external activation. CI
+uses no advisory ignore flags and audits optional surfaces separately so
+provider or MCP dependencies cannot contaminate the core result.
 
 Any future exception must be recorded in
 `dependency-advisory-exceptions.json` with advisory ID, package, owner,
