@@ -121,6 +121,17 @@ def test_candidate_baseline_rejects_stale_diagnostics() -> None:
         validate_candidate_baseline(Counter(), candidate, candidate)
 
 
+def test_candidate_baseline_accepts_real_debt_reduction() -> None:
+    retained = _key()
+    fixed = _key(code="return-value", message="wrong return")
+
+    validate_candidate_baseline(
+        Counter({retained: 1}),
+        Counter({retained: 1}),
+        Counter({retained: 1, fixed: 1}),
+    )
+
+
 def test_candidate_baseline_rejects_replaced_diagnostic_without_count_growth() -> None:
     original = _key(message="old assignment")
     replacement = _key(code="return-value", message="wrong return")
