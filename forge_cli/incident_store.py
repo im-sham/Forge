@@ -80,6 +80,8 @@ class QuarantineSourceChangedError(OSError):
 class RecoverablePartialStateError(OSError):
     """Indicates recovery state remains after an incomplete operation."""
 
+    primary_error: OSError | None
+
     def __init__(
         self,
         *,
@@ -1335,22 +1337,22 @@ class IncidentEditSession:
             primary_error = exc
             raise
         finally:
-            cleanup_error: OSError | None = None
+            final_cleanup_error: OSError | None = None
             if temporary_fd is not None:
                 try:
                     os.close(temporary_fd)
                 except OSError as exc:
-                    cleanup_error = exc
+                    final_cleanup_error = exc
             if temporary_name is not None:
                 try:
                     os.unlink(temporary_name, dir_fd=self._directory_fd)
                 except OSError as exc:
-                    if cleanup_error is None:
-                        cleanup_error = exc
-            if cleanup_error is not None:
+                    if final_cleanup_error is None:
+                        final_cleanup_error = exc
+            if final_cleanup_error is not None:
                 raise RecoverablePartialStateError(
-                    primary_error=primary_error or cleanup_error
-                ) from cleanup_error
+                    primary_error=primary_error or final_cleanup_error
+                ) from final_cleanup_error
 
 
 @contextmanager

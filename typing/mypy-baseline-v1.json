@@ -1,0 +1,75 @@
+{
+  "diagnostics": [
+    {
+      "code": "arg-type",
+      "file": "forge_cli/cli.py",
+      "message": "Argument 24 to \"Incident\" has incompatible type \"**dict[str, dict[Any, Any] | None]\"; expected \"list[dict[str, Any]]\""
+    },
+    {
+      "code": "arg-type",
+      "file": "forge_cli/cli.py",
+      "message": "Argument 24 to \"Incident\" has incompatible type \"**dict[str, dict[Any, Any] | None]\"; expected \"list[str]\""
+    },
+    {
+      "code": "assignment",
+      "file": "forge_cli/cli.py",
+      "message": "Incompatible types in assignment (expression has type \"list[dict[Any, Any]]\", target has type \"dict[Any, Any] | None\")"
+    },
+    {
+      "code": "operator",
+      "file": "forge_cli/config.py",
+      "message": "Unsupported left operand type for / (\"None\")"
+    },
+    {
+      "code": "operator",
+      "file": "forge_cli/config.py",
+      "message": "Unsupported left operand type for / (\"None\")"
+    },
+    {
+      "code": "operator",
+      "file": "forge_cli/config.py",
+      "message": "Unsupported left operand type for / (\"None\")"
+    },
+    {
+      "code": "arg-type",
+      "file": "forge_cli/display.py",
+      "message": "Argument \"style\" to \"Text\" has incompatible type \"str | None\"; expected \"str | Style\""
+    },
+    {
+      "code": "arg-type",
+      "file": "forge_cli/display.py",
+      "message": "Argument \"style\" to \"Text\" has incompatible type \"str | None\"; expected \"str | Style\""
+    },
+    {
+      "code": "arg-type",
+      "file": "forge_cli/mcp_server.py",
+      "message": "Argument 25 to \"Incident\" has incompatible type \"**dict[str, list[dict[str, Any]] | dict[str, Any] | None]\"; expected \"dict[str, Any] | None\""
+    },
+    {
+      "code": "arg-type",
+      "file": "forge_cli/mcp_server.py",
+      "message": "Argument 25 to \"Incident\" has incompatible type \"**dict[str, list[dict[str, Any]] | dict[str, Any] | None]\"; expected \"list[dict[str, Any]]\""
+    },
+    {
+      "code": "import-not-found",
+      "file": "forge_cli/providers.py",
+      "message": "Cannot find implementation or library stub for module named \"anthropic\""
+    },
+    {
+      "code": "import-not-found",
+      "file": "forge_cli/providers.py",
+      "message": "Cannot find implementation or library stub for module named \"openai\""
+    },
+    {
+      "code": "return-value",
+      "file": "forge_cli/providers.py",
+      "message": "Incompatible return value type (got \"object\", expected \"LLMProvider\")"
+    },
+    {
+      "code": "return-value",
+      "file": "forge_cli/providers.py",
+      "message": "Incompatible return value type (got \"object\", expected \"LLMProvider\")"
+    }
+  ],
+  "version": 1
+}
