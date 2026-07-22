@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -35,6 +37,11 @@ jobs:
           python -m pip install --require-hashes --no-deps -r requirements/build.lock
           python -m pip install --no-deps --no-build-isolation -e .
           python -m pip check
+
+      - name: Type check critical surfaces and monotonic repository baseline
+        env:
+          TRUSTED_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python scripts/verify_type_gate.py --base "${TRUSTED_BASE_SHA}"
 
       - name: Lint
         run: ruff check forge_cli/ tests/

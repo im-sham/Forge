@@ -37,8 +37,10 @@ anthropic = ["anthropic>=0.39.0"]
 openai = ["openai>=1.0.0"]
 mcp = ["mcp>=1.0.0", "uvicorn>=0.30.0"]
 dev = [
+    "mypy>=1.19.1,<1.20",
     "pytest>=7.4.0",
     "ruff>=0.1.0",
+    "types-pyyaml>=6.0.12.20241230",
 ]
 
 [dependency-groups]
