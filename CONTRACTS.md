@@ -85,37 +85,75 @@ Existing incident YAML can omit every structured axis and pointer field. New inc
 
 The YAML schema preserves the original minimal incident fields and adds optional V0.1 structured axes / pointer refs for Proofhouse incidents. V0.1 `IncidentRef` remains a compatibility projection over both old and new YAML shapes.
 
-Projection fields:
+Current envelope field order:
 
-- `incident_id`
-- `failure_type`
-- `severity`
-- `capability_area`
-- `lifecycle_stage`
-- `issue_class`
-- `workflow_archetype`
-- `subject_type`
-- `blocked_use_class`
-- `workflow_ref`
-- `evidence_ref`
-- `workflow_evidence_snapshot`
-- `control_refs`
-- `subject_ref`
-- `assessment_ref`
-- `policy_decision_ref`
-- `use_approval_ref`
-- `asset_ref`
-- `derivation_ref`
-- `transform_ref`
-- `playbook_entry`
+1. `contract_version`
+2. `contract_name`
+3. `producer_capability`
+4. `producer_system`
+5. `canonical_owner`
+6. `issued_at`
+7. `cache_policy`
+8. `ref`
 
-Current implementation:
+Current `ref` field order:
 
-- `forge_cli/models.py` builds `IncidentRef` and the V0.1 shared envelope from incident fields.
-- `forge ref <incident-id>` prints the projection as JSON for CLI consumers.
-- `forge_incident_ref` exposes the same projection to MCP clients.
-- Existing YAML incident files are not rewritten and do not gain new required fields.
-- Forge local data does not currently carry tenant or environment metadata, so the projection emits `organization_id: "unscoped"` and `environment_id: "default"` until structured metadata exists.
+1. `ref_id`
+2. `ref_type`
+3. `source_capability`
+4. `organization_id`
+5. `environment_id`
+6. `external_uri`
+7. `snapshot_id`
+8. `version`
+9. `created_at`
+10. `summary`
+11. `incident_id`
+12. `failure_type`
+13. `severity`
+14. `project`
+15. `agent`
+16. `platform`
+17. `capability_area`
+18. `lifecycle_stage`
+19. `issue_class`
+20. `workflow_archetype`
+21. `subject_type`
+22. `blocked_use_class`
+23. `observed_state`
+24. `tags`
+25. `related_incidents`
+26. `playbook_entry`
+27. `workflow_ref`
+28. `evidence_ref`
+29. `workflow_evidence_snapshot`
+30. `control_refs`
+31. `subject_ref`
+32. `assessment_ref`
+33. `policy_decision_ref`
+34. `use_approval_ref`
+35. `asset_ref`
+36. `derivation_ref`
+37. `transform_ref`
+
+Current characterized behavior:
+
+- `forge_cli/models.py` deterministically builds the V0.1 envelope and `IncidentRef` from one loaded incident; it performs no write or external lookup.
+- Envelope constants are `contract_name: "IncidentRef"`, `producer_capability: "forge"`, `producer_system: "proofhouse-forge"`, `canonical_owner: "forge"`, and `cache_policy: "summary_snapshot"`.
+- Forge local data has no structured tenant or environment metadata. Every projection therefore emits the compatibility sentinels `organization_id: "unscoped"` and `environment_id: "default"`; `project` is not treated as tenant scope.
+- Legacy YAML may omit `platform`, tags, related incidents, playbook data, every structured axis, observed state, and every pointer. Missing scalar values remain empty strings; missing maps are `null`; missing lists are empty. Compatibility inference uses `"unknown"` for absent capability/lifecycle values and falls back to `failure_type` for `issue_class`.
+- Structured axes override compatibility inference. Pointer mappings and summary-only observed state pass through the projection, while string refs are normalized to ref-only mappings. Core incident free text is not emitted.
+- Pointer maps, observed-state maps, and core free-text fields reject obvious raw/sensitive payload markers before projection. This is boundary hygiene, not DLP, PHI classification, rights approval, or workflow-truth validation.
+- `forge ref <incident-id>` and `forge_incident_ref` load through the same incident lookup and serialize the same envelope.
+- Existing YAML is not rewritten and gains no required fields.
+
+`tests/test_incident_ref_characterization.py` freezes the exact inventories and these behaviors as executable drift evidence. Run it with:
+
+```bash
+PYTHONPATH=. python -m pytest tests/test_incident_ref_characterization.py -q
+```
+
+This is a Forge-local characterization of the accepted implementation. It does not declare `IncidentRef` canonical, approve the D-12 semantic ownership matrix, publish a shared contract, or claim producer/consumer migration.
 
 ## Current Implementation Seams
 
