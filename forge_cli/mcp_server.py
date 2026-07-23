@@ -367,7 +367,7 @@ def forge_show(incident_id: str) -> str:
 
 @mcp.tool()
 def forge_incident_ref(incident_id: str) -> str:
-    """Return the Proofhouse IncidentRef projection for a single Forge incident.
+    """Return the legacy noncanonical IncidentRef projection for one Forge incident.
 
     Args:
         incident_id: Incident ID (e.g., "2026-03-04-001") or suffix (e.g., "001")
@@ -385,7 +385,7 @@ def forge_incident_ref(incident_id: str) -> str:
     if incident is None:
         return f"No incident found matching '{incident_id}'."
 
-    return json.dumps(incident.to_ref_envelope(), indent=2)
+    return json.dumps(incident.to_legacy_ref_envelope(), indent=2)
 
 
 @mcp.tool()

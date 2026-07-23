@@ -58,7 +58,7 @@ forge list
 # Inspect one incident from the list
 forge show <incident-id>
 
-# Print the Proofhouse IncidentRef projection for an incident
+# Print the legacy noncanonical IncidentRef compatibility projection
 forge ref <incident-id>
 
 # Review aggregate patterns
@@ -111,7 +111,7 @@ You can also set an `organization_name` in `config.yaml` or `config.local.yaml` 
 | `forge log` | Log a new incident with interactive prompts |
 | `forge list` | List incidents with filters and report valid-corpus, corrupt-corpus, matched, and returned counts |
 | `forge show <id>` | Show full details of one incident; suffix matches like `forge show 001` work |
-| `forge ref <id>` | Print a Proofhouse `IncidentRef` compatibility projection as JSON |
+| `forge ref <id>` | Print the legacy noncanonical 37-field `IncidentRef` compatibility projection as JSON |
 | `forge edit <id>` | Open an incident in your editor |
 | `forge stats` | Show aggregate counts with explicit corpus and matched-count diagnostics |
 | `forge validate [--strict]` | Report safe relative-path corruption diagnostics; `--strict` exits nonzero for corrupt files |
@@ -293,7 +293,9 @@ Pointer refs, `observed_state`, and core incident free-text fields are summary/r
 
 Governance remains the approval and export-control plane. Forge may record that a handoff or approval issue occurred, but the authoritative rights, redaction, use-approval, manifest, and export state lives outside Forge.
 
-Forge emits a Proofhouse V0.1 `IncidentRef` projection through `forge ref <id>` and the `forge_incident_ref` MCP tool. This projection is generated from saved YAML fields when structured fields exist, and falls back to compatibility inference for older incidents. Until Forge stores structured tenant metadata, the projection uses `organization_id: "unscoped"` and `environment_id: "default"` to avoid implying that `project` is a tenant boundary.
+`forge ref <id>` and the `forge_incident_ref` MCP tool preserve the legacy noncanonical 37-field projection for one release. They use compatibility inference and the explicit sentinels `organization_id: "unscoped"` and `environment_id: "default"`; they must not be consumed as canonical IncidentRef V0.1.
+
+The separate strict canonical producer API is `forge_cli.incident_ref_v0_1.build_strict_incident_ref_v0_1`. It requires explicit organization/environment scope plus exact immutable incident and workflow identities, rejects cross-state snapshot/version pairs, emits only the closed metadata-only V0.1 core, and never infers scope from `project`. Parity is pinned to accepted Contracts protected main and the Forge change remains draft pending facilitator review; see `CONTRACTS.md`.
 
 ### Severity Levels
 

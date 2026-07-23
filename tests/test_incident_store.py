@@ -1245,7 +1245,7 @@ def test_claims_rate_source_example_roundtrips_to_valid_incident_ref():
 
     incident = load_incident(fixture_path)
     result = incident.to_dict()
-    envelope = incident.to_ref_envelope()
+    envelope = incident.to_legacy_ref_envelope()
     ref = envelope["ref"]
 
     assert incident.project == "proofhouse-claims"

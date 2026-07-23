@@ -97,7 +97,7 @@ def test_incident_free_text_project():
 
 def test_incident_ref_projection_preserves_boundary(sample_data):
     incident = Incident.from_dict(sample_data)
-    ref = incident.to_ref()
+    ref = incident.to_legacy_ref()
     data = ref.to_dict()
 
     assert ref.ref_id == "incident:2026-03-04-001"
@@ -127,7 +127,7 @@ def test_incident_ref_projection_infers_proofhouse_axes(sample_data):
     data["project"] = "sentinel"
     data["tags"] = ["operational-learning", "use-approval", "redaction"]
     incident = Incident.from_dict(data)
-    ref = incident.to_ref()
+    ref = incident.to_legacy_ref()
 
     assert ref.capability_area == "governance"
     assert ref.lifecycle_stage == "use_approval"
@@ -161,7 +161,7 @@ def test_subject_ref_is_supported_as_pointer_only(sample_data):
     data["subject_ref"] = "subject:document-packet:synthetic-demo"
 
     incident = Incident.from_dict(data)
-    ref = incident.to_ref()
+    ref = incident.to_legacy_ref()
 
     assert "subject_ref" in PROOFHOUSE_REF_FIELDS
     assert incident.subject_ref["ref_id"] == "subject:document-packet:synthetic-demo"
@@ -252,7 +252,7 @@ def test_incident_core_free_text_allows_synthetic_ref_only_summary(sample_data):
 
     incident = Incident.from_dict(data)
     result = incident.to_dict()
-    ref = incident.to_ref().to_dict()
+    ref = incident.to_legacy_ref().to_dict()
 
     assert result["context"].startswith("Synthetic fixture ref")
     assert "expected_behavior" not in ref
@@ -269,14 +269,14 @@ def test_incident_ref_projection_infers_claims_issue_class_alias(sample_data):
         }
     )
     incident = Incident.from_dict(data)
-    ref = incident.to_ref()
+    ref = incident.to_legacy_ref()
 
     assert ref.issue_class == "contract_rate_mismatch"
 
 
 def test_incident_ref_envelope_shape(sample_data):
     incident = Incident.from_dict(sample_data)
-    envelope = incident.to_ref_envelope()
+    envelope = incident.to_legacy_ref_envelope()
 
     assert envelope["contract_version"] == PROOFHOUSE_SHARED_CONTRACT_VERSION
     assert envelope["contract_name"] == "IncidentRef"
@@ -323,7 +323,7 @@ def test_structured_document_operations_incident_roundtrip(sample_data):
 
     incident = Incident.from_dict(data)
     result = incident.to_dict()
-    ref = incident.to_ref()
+    ref = incident.to_legacy_ref()
 
     assert result["capability_area"] == "governance"
     assert result["issue_class"] == "redaction_miss"
