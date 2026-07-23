@@ -479,8 +479,8 @@ INCIDENT_FIELD_ORDER = [
 
 
 @dataclass(frozen=True)
-class IncidentRef:
-    """Compact Forge-owned incident reference for Proofhouse consumers."""
+class LegacyIncidentRef:
+    """Legacy noncanonical 37-field Forge IncidentRef compatibility projection."""
 
     ref_id: str
     ref_type: str
@@ -522,6 +522,10 @@ class IncidentRef:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+# One-release deprecated alias for the characterized noncanonical projection.
+IncidentRef = LegacyIncidentRef
 
 
 @dataclass
@@ -577,13 +581,21 @@ class Incident:
                 data[key] = value
         return data
 
-    def to_ref(self) -> IncidentRef:
-        """Project this incident into a Proofhouse V0.1 IncidentRef."""
-        return build_incident_ref(self)
+    def to_legacy_ref(self) -> LegacyIncidentRef:
+        """Project this incident into the legacy noncanonical IncidentRef shape."""
+        return build_legacy_incident_ref(self)
+
+    def to_legacy_ref_envelope(self) -> dict[str, Any]:
+        """Project this incident into the legacy noncanonical ref envelope."""
+        return build_legacy_incident_ref_envelope(self)
+
+    def to_ref(self) -> LegacyIncidentRef:
+        """Deprecated alias for :meth:`to_legacy_ref`."""
+        return self.to_legacy_ref()
 
     def to_ref_envelope(self) -> dict[str, Any]:
-        """Project this incident into a Proofhouse V0.1 ref envelope."""
-        return build_incident_ref_envelope(self)
+        """Deprecated alias for :meth:`to_legacy_ref_envelope`."""
+        return self.to_legacy_ref_envelope()
 
     @classmethod
     def from_dict(cls, data: dict) -> Incident:
@@ -631,8 +643,8 @@ class Incident:
         )
 
 
-def build_incident_ref(incident: Incident) -> IncidentRef:
-    """Build a boundary-safe IncidentRef from stored or inferred incident fields."""
+def build_legacy_incident_ref(incident: Incident) -> LegacyIncidentRef:
+    """Build the legacy noncanonical IncidentRef compatibility projection."""
     tokens = _normalized_tokens(incident)
     capability_area = incident.capability_area or _match_alias(tokens, CAPABILITY_AREA_ALIASES) or "unknown"
     lifecycle_stage = incident.lifecycle_stage or _match_alias(tokens, LIFECYCLE_STAGE_ALIASES) or "unknown"
@@ -647,7 +659,7 @@ def build_incident_ref(incident: Incident) -> IncidentRef:
     if incident.agent:
         summary = f"{summary}/{incident.agent}"
 
-    return IncidentRef(
+    return LegacyIncidentRef(
         ref_id=f"incident:{incident.id}",
         ref_type="incident",
         source_capability="forge",
@@ -688,8 +700,8 @@ def build_incident_ref(incident: Incident) -> IncidentRef:
     )
 
 
-def build_incident_ref_envelope(incident: Incident) -> dict[str, Any]:
-    """Wrap an IncidentRef in the Proofhouse shared-contract envelope."""
+def build_legacy_incident_ref_envelope(incident: Incident) -> dict[str, Any]:
+    """Wrap the legacy noncanonical IncidentRef compatibility projection."""
     return {
         "contract_version": PROOFHOUSE_SHARED_CONTRACT_VERSION,
         "contract_name": "IncidentRef",
@@ -698,5 +710,15 @@ def build_incident_ref_envelope(incident: Incident) -> dict[str, Any]:
         "canonical_owner": "forge",
         "issued_at": incident.timestamp,
         "cache_policy": "summary_snapshot",
-        "ref": build_incident_ref(incident).to_dict(),
+        "ref": build_legacy_incident_ref(incident).to_dict(),
     }
+
+
+def build_incident_ref(incident: Incident) -> LegacyIncidentRef:
+    """Deprecated alias for :func:`build_legacy_incident_ref`."""
+    return build_legacy_incident_ref(incident)
+
+
+def build_incident_ref_envelope(incident: Incident) -> dict[str, Any]:
+    """Deprecated alias for :func:`build_legacy_incident_ref_envelope`."""
+    return build_legacy_incident_ref_envelope(incident)

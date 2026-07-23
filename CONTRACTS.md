@@ -81,11 +81,11 @@ Existing incident YAML can omit every structured axis and pointer field. New inc
 
 ## Shared Refs This Repo Should Emit
 
-### `IncidentRef`
+### Legacy noncanonical `IncidentRef` compatibility projection
 
-The YAML schema preserves the original minimal incident fields and adds optional V0.1 structured axes / pointer refs for Proofhouse incidents. V0.1 `IncidentRef` remains a compatibility projection over both old and new YAML shapes.
+The characterized 37-field projection remains available for one release over old and new YAML shapes. It is not canonical IncidentRef V0.1.
 
-Current envelope field order:
+Legacy envelope field order:
 
 1. `contract_version`
 2. `contract_name`
@@ -96,7 +96,7 @@ Current envelope field order:
 7. `cache_policy`
 8. `ref`
 
-Current `ref` field order:
+Legacy `ref` field order:
 
 1. `ref_id`
 2. `ref_type`
@@ -136,24 +136,34 @@ Current `ref` field order:
 36. `derivation_ref`
 37. `transform_ref`
 
-Current characterized behavior:
+Characterized legacy behavior:
 
-- `forge_cli/models.py` deterministically builds the V0.1 envelope and `IncidentRef` from one loaded incident; it performs no write or external lookup.
+- `forge_cli/models.py` deterministically builds the legacy noncanonical envelope from one loaded incident; it performs no write or external lookup.
 - Envelope constants are `contract_name: "IncidentRef"`, `producer_capability: "forge"`, `producer_system: "proofhouse-forge"`, `canonical_owner: "forge"`, and `cache_policy: "summary_snapshot"`.
 - Forge local data has no structured tenant or environment metadata. Every projection therefore emits the compatibility sentinels `organization_id: "unscoped"` and `environment_id: "default"`; `project` is not treated as tenant scope.
 - Legacy YAML may omit `platform`, tags, related incidents, playbook data, every structured axis, observed state, and every pointer. Missing scalar values remain empty strings; missing maps are `null`; missing lists are empty. Compatibility inference uses `"unknown"` for absent capability/lifecycle values and falls back to `failure_type` for `issue_class`.
 - Structured axes override compatibility inference. Pointer mappings and summary-only observed state pass through the projection, while string refs are normalized to ref-only mappings. Core incident free text is not emitted.
 - Pointer maps, observed-state maps, and core free-text fields reject obvious raw/sensitive payload markers before projection. This is boundary hygiene, not DLP, PHI classification, rights approval, or workflow-truth validation.
-- `forge ref <incident-id>` and `forge_incident_ref` load through the same incident lookup and serialize the same envelope.
+- `forge ref <incident-id>` and `forge_incident_ref` are legacy noncanonical surfaces that load through the same incident lookup and serialize byte-identical envelopes.
 - Existing YAML is not rewritten and gains no required fields.
 
-`tests/test_incident_ref_characterization.py` freezes the exact inventories and these behaviors as executable drift evidence. Run it with:
+`tests/test_incident_ref_characterization.py` freezes the exact inventories, deprecated aliases, and these behaviors as executable drift evidence. Run it with:
 
 ```bash
 PYTHONPATH=. python -m pytest tests/test_incident_ref_characterization.py -q
 ```
 
-This is a Forge-local characterization of the accepted implementation. It does not declare `IncidentRef` canonical, approve the D-12 semantic ownership matrix, publish a shared contract, or claim producer/consumer migration.
+This compatibility surface does not satisfy or claim canonical IncidentRef V0.1 conformance.
+
+### Strict canonical `IncidentRef` V0.1 producer
+
+`forge_cli.incident_ref_v0_1.build_strict_incident_ref_v0_1` is the separate canonical producer API. It requires explicit non-placeholder organization and environment scope, exact incident and workflow identities, and at least one immutable pin for each identity. `ImmutableStatePin.state_id` is Forge-owned producer evidence used only to reject snapshot/version pairs that do not co-reference the same immutable state; it is never emitted and does not require opaque pin strings to be equal.
+
+Canonical output is closed and metadata-only. It derives incident identity, creation time, severity, and failure classification from the loaded Forge incident, constructs a bounded classification-only summary, and excludes all raw incident free text, project/agent/platform metadata, tags, diagnostics, authority, and broad linked refs. Missing optional pins are omitted rather than serialized as `null`.
+
+Parity is pinned to accepted Contracts protected main `79caef37cd62b290e7643c6dd2599a2217f74e48` (tree `945446de73b2460b553cb9607f327ea1d4768a86`), schema SHA-256 `a05484880cb08236c33200d3ff0a5984f240db795ad01f077aa14588667d026a`, corpus-index SHA-256 `9753aaee774f6bd69fd594bb1ba9307374128f5c06a2c19a0625fa06103aff7d`, artifact-digests SHA-256 `519ceb37fd1244e0ac1c73eecc8ad9c3ce717e18ec1fff1a46cd0ccafef57638`, generated Python binding SHA-256 `d5f87f94240d59ffeecccd2c8348e83d8807ab8ecc96c3c08955237418aad9f3`, and provenance SHA-256 `ae36a2617d35761a2cba61b1a6bae6887d0700a39f546d321a2306f78245b7cc`. `scripts/vendor_incident_ref_contract.py` regenerates and verifies the exact minimum binding/corpus material from a clean detached checkout. `tests/test_incident_ref_v0_1_parity.py` proves all 88 positive and negative cases through the unmodified generated semantic validator.
+
+Contracts publication is complete. This Forge producer change remains draft pending facilitator review and separate merge authority. It authorizes no runtime-data migration, deployment, production use, external use, customer data, rights/use decision, export, product gate, or work-package closure.
 
 ## Current Implementation Seams
 

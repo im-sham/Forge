@@ -9,7 +9,13 @@ from typer.testing import CliRunner
 
 from forge_cli.cli import app
 from forge_cli.incident_store import save_incident
-from forge_cli.models import Incident, IncidentRef
+from forge_cli.models import (
+    Incident,
+    IncidentRef,
+    LegacyIncidentRef,
+    build_incident_ref,
+    build_incident_ref_envelope,
+)
 
 
 ENVELOPE_FIELDS = [
@@ -136,21 +142,21 @@ def _expected_legacy_envelope() -> dict[str, object]:
     }
 
 
-def test_incident_ref_wire_and_envelope_field_inventory_is_exact() -> None:
+def test_legacy_incident_ref_wire_and_envelope_field_inventory_is_exact() -> None:
     incident = Incident.from_dict(_legacy_incident_data())
-    envelope = incident.to_ref_envelope()
+    envelope = incident.to_legacy_ref_envelope()
     ref_payload = envelope["ref"]
 
     assert isinstance(ref_payload, dict)
-    assert [field.name for field in fields(IncidentRef)] == INCIDENT_REF_FIELDS
+    assert [field.name for field in fields(LegacyIncidentRef)] == INCIDENT_REF_FIELDS
     assert list(envelope) == ENVELOPE_FIELDS
     assert list(ref_payload) == INCIDENT_REF_FIELDS
 
 
 def test_legacy_projection_is_deterministic_and_preserves_current_defaults() -> None:
     incident = Incident.from_dict(_legacy_incident_data())
-    first = incident.to_ref_envelope()
-    second = incident.to_ref_envelope()
+    first = incident.to_legacy_ref_envelope()
+    second = incident.to_legacy_ref_envelope()
 
     assert first == _expected_legacy_envelope()
     assert second == first
@@ -159,7 +165,17 @@ def test_legacy_projection_is_deterministic_and_preserves_current_defaults() -> 
     )
 
 
-def test_structured_projection_passes_summary_only_pointers_without_core_text() -> None:
+def test_deprecated_legacy_aliases_are_byte_identical() -> None:
+    incident = Incident.from_dict(_legacy_incident_data())
+
+    assert IncidentRef is LegacyIncidentRef
+    assert incident.to_ref().to_dict() == incident.to_legacy_ref().to_dict()
+    assert incident.to_ref_envelope() == incident.to_legacy_ref_envelope()
+    assert build_incident_ref(incident).to_dict() == incident.to_legacy_ref().to_dict()
+    assert build_incident_ref_envelope(incident) == incident.to_legacy_ref_envelope()
+
+
+def test_structured_legacy_projection_passes_summary_only_pointers_without_core_text() -> None:
     workflow_ref = {
         "ref_id": "workflow:synthetic-review",
         "ref_type": "workflow",
@@ -182,7 +198,7 @@ def test_structured_projection_passes_summary_only_pointers_without_core_text() 
         }
     )
 
-    ref = Incident.from_dict(data).to_ref().to_dict()
+    ref = Incident.from_dict(data).to_legacy_ref().to_dict()
 
     assert ref["workflow_ref"] == workflow_ref
     assert ref["control_refs"] == [
@@ -237,7 +253,7 @@ def test_projection_inputs_reject_raw_payload_markers(
         _ = Incident.from_dict(data)
 
 
-def test_cli_and_mcp_emit_the_same_incident_ref_envelope(
+def test_cli_and_mcp_emit_the_same_legacy_noncanonical_incident_ref_envelope(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _ = pytest.importorskip("mcp")
@@ -254,5 +270,6 @@ def test_cli_and_mcp_emit_the_same_incident_ref_envelope(
     mcp_result = str(forge_incident_ref("001"))
 
     assert cli_result.exit_code == 0
-    assert json.loads(cli_result.output) == incident.to_ref_envelope()
-    assert json.loads(mcp_result) == incident.to_ref_envelope()
+    assert json.loads(cli_result.output) == incident.to_legacy_ref_envelope()
+    assert json.loads(mcp_result) == incident.to_legacy_ref_envelope()
+    assert "legacy noncanonical" in (forge_incident_ref.__doc__ or "").lower()

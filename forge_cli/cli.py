@@ -494,7 +494,7 @@ def ref_cmd(
     incident_id: str = typer.Argument(help="Incident ID (e.g., '2026-03-04-001' or '001')"),
     compact: bool = typer.Option(False, "--compact", help="Print single-line JSON"),
 ) -> None:
-    """Print the Proofhouse IncidentRef projection for a single incident."""
+    """Print the legacy noncanonical IncidentRef projection for a single incident."""
     try:
         cfg = load_config()
     except FileNotFoundError as e:
@@ -515,7 +515,7 @@ def ref_cmd(
         raise typer.Exit(1)
 
     indent = None if compact else 2
-    typer.echo(json.dumps(incident.to_ref_envelope(), indent=indent))
+    typer.echo(json.dumps(incident.to_legacy_ref_envelope(), indent=indent))
 
 
 @app.command()
