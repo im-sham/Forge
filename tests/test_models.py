@@ -7,6 +7,7 @@ from forge_cli.models import (
     PROOFHOUSE_SHARED_CONTRACT_VERSION,
     FailureType,
     Incident,
+    IncidentRefEnvelope,
     ISSUE_CLASS_VALUES,
     Severity,
     parse_observed_state,
@@ -286,6 +287,17 @@ def test_incident_ref_envelope_shape(sample_data):
     assert envelope["cache_policy"] == "summary_snapshot"
     assert envelope["ref"]["incident_id"] == sample_data["id"]
     assert envelope["ref"]["organization_id"] == FORGE_UNSCOPED_ORGANIZATION_ID
+
+
+def test_incident_ref_envelope_has_typed_boundary_model(sample_data):
+    incident = Incident.from_dict(sample_data)
+    envelope = incident.to_ref_envelope_model()
+
+    assert isinstance(envelope, IncidentRefEnvelope)
+    assert envelope.contract_name == "IncidentRef"
+    assert envelope.producer_capability == "forge"
+    assert envelope.ref.incident_id == sample_data["id"]
+    assert envelope.to_dict() == incident.to_ref_envelope()
 
 
 def test_structured_document_operations_incident_roundtrip(sample_data):

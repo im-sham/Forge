@@ -524,6 +524,23 @@ class IncidentRef:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class IncidentRefEnvelope:
+    """Typed Proofhouse shared-contract envelope for Forge IncidentRef output."""
+
+    contract_version: str
+    contract_name: str
+    producer_capability: str
+    producer_system: str
+    canonical_owner: str
+    issued_at: str
+    cache_policy: str
+    ref: IncidentRef
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
 @dataclass
 class Incident:
     id: str
@@ -583,6 +600,10 @@ class Incident:
 
     def to_ref_envelope(self) -> dict[str, Any]:
         """Project this incident into a Proofhouse V0.1 ref envelope."""
+        return self.to_ref_envelope_model().to_dict()
+
+    def to_ref_envelope_model(self) -> IncidentRefEnvelope:
+        """Project this incident into a typed Proofhouse V0.1 ref envelope."""
         return build_incident_ref_envelope(self)
 
     @classmethod
@@ -688,15 +709,15 @@ def build_incident_ref(incident: Incident) -> IncidentRef:
     )
 
 
-def build_incident_ref_envelope(incident: Incident) -> dict[str, Any]:
+def build_incident_ref_envelope(incident: Incident) -> IncidentRefEnvelope:
     """Wrap an IncidentRef in the Proofhouse shared-contract envelope."""
-    return {
-        "contract_version": PROOFHOUSE_SHARED_CONTRACT_VERSION,
-        "contract_name": "IncidentRef",
-        "producer_capability": "forge",
-        "producer_system": FORGE_PRODUCER_SYSTEM,
-        "canonical_owner": "forge",
-        "issued_at": incident.timestamp,
-        "cache_policy": "summary_snapshot",
-        "ref": build_incident_ref(incident).to_dict(),
-    }
+    return IncidentRefEnvelope(
+        contract_version=PROOFHOUSE_SHARED_CONTRACT_VERSION,
+        contract_name="IncidentRef",
+        producer_capability="forge",
+        producer_system=FORGE_PRODUCER_SYSTEM,
+        canonical_owner="forge",
+        issued_at=incident.timestamp,
+        cache_policy="summary_snapshot",
+        ref=build_incident_ref(incident),
+    )

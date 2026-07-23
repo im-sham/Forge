@@ -385,7 +385,7 @@ def forge_incident_ref(incident_id: str) -> str:
     if incident is None:
         return f"No incident found matching '{incident_id}'."
 
-    return json.dumps(incident.to_ref_envelope(), indent=2)
+    return json.dumps(incident.to_ref_envelope_model().to_dict(), indent=2)
 
 
 @mcp.tool()
