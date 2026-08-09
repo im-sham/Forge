@@ -157,13 +157,22 @@ This compatibility surface does not satisfy or claim canonical IncidentRef V0.1 
 
 ### Strict canonical `IncidentRef` V0.1 producer
 
-`forge_cli.incident_ref_v0_1.build_strict_incident_ref_v0_1` is the separate canonical producer API. It requires explicit non-placeholder organization and environment scope, exact incident and workflow identities, and at least one immutable pin for each identity. `ImmutableStatePin.state_id` is Forge-owned producer evidence used only to reject snapshot/version pairs that do not co-reference the same immutable state; it is never emitted and does not require opaque pin strings to be equal.
+`forge_cli.incident_ref_v0_1.build_strict_incident_ref_v0_1` is the canonical producer API. `build_strict_incident_ref_v0_1_from_corpus` is the shared typed, read-only local interface used by `forge canonical-ref-v0-1` and `forge_canonical_incident_ref_v0_1`. Both local surfaces require an explicit corpus root, lookup, non-placeholder organization and environment scope, issue time, exact incident and workflow identities, and at least one immutable pin plus state identity for each identity. They do not consult config, environment corpus defaults, project names, tags, current time, or mutable state. `ImmutableStatePin.state_id` is Forge-owned producer evidence used only to reject snapshot/version pairs that do not co-reference the same immutable state; it is never emitted and does not require opaque pin strings to be equal.
 
 Canonical output is closed and metadata-only. It derives incident identity, creation time, severity, and failure classification from the loaded Forge incident, constructs a bounded classification-only summary, and excludes all raw incident free text, project/agent/platform metadata, tags, diagnostics, authority, and broad linked refs. Missing optional pins are omitted rather than serialized as `null`.
 
 Parity is pinned to accepted Contracts protected main `79caef37cd62b290e7643c6dd2599a2217f74e48` (tree `945446de73b2460b553cb9607f327ea1d4768a86`), schema SHA-256 `a05484880cb08236c33200d3ff0a5984f240db795ad01f077aa14588667d026a`, corpus-index SHA-256 `9753aaee774f6bd69fd594bb1ba9307374128f5c06a2c19a0625fa06103aff7d`, artifact-digests SHA-256 `519ceb37fd1244e0ac1c73eecc8ad9c3ce717e18ec1fff1a46cd0ccafef57638`, generated Python binding SHA-256 `d5f87f94240d59ffeecccd2c8348e83d8807ab8ecc96c3c08955237418aad9f3`, and provenance SHA-256 `ae36a2617d35761a2cba61b1a6bae6887d0700a39f546d321a2306f78245b7cc`. `scripts/vendor_incident_ref_contract.py` regenerates and verifies the exact minimum binding/corpus material from a clean detached checkout. `tests/test_incident_ref_v0_1_parity.py` proves all 88 positive and negative cases through the unmodified generated semantic validator.
 
-Contracts publication is complete. This Forge producer change remains draft pending facilitator review and separate merge authority. It authorizes no runtime-data migration, deployment, production use, external use, customer data, rights/use decision, export, product gate, or work-package closure.
+The deterministic document-operations expected output at
+`examples/document-operations/incident-ref-v0.1.expected.json` is copied
+exactly from the accepted consumer fixture
+`im-sham/opsorchestra@3e9804144270f17bbfdb62507fd16ad10b2533c2`,
+`data/demo_sets/document_ops/regulated_document_review_workflow.json` blob
+`5371742934f729686c532d1ff161a348acd6a2d0`. Focused tests invoke the Forge
+CLI and MCP surfaces against the repo-owned sanitized source incident, assert
+exact envelope parity, and assert that the corpus bytes do not change.
+
+Contracts publication is complete. These producer interfaces authorize no runtime-data migration, deployment, production use, external use, customer data, rights/use decision, export, product gate, or work-package closure.
 
 ## Current Implementation Seams
 

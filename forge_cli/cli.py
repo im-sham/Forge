@@ -24,6 +24,7 @@ from forge_cli.display import (
     print_info,
     print_success,
 )
+from forge_cli.incident_ref_v0_1 import build_strict_incident_ref_v0_1_from_corpus
 from forge_cli.incident_store import (
     AmbiguousIncidentLookupError,
     DuplicateIncidentError,
@@ -516,6 +517,72 @@ def ref_cmd(
 
     indent = None if compact else 2
     typer.echo(json.dumps(incident.to_legacy_ref_envelope(), indent=indent))
+
+
+@app.command("canonical-ref-v0-1")
+def canonical_ref_v0_1_cmd(
+    data_root: Path = typer.Option(
+        ...,
+        "--data-root",
+        help="Explicit local Forge corpus root containing incidents/",
+    ),
+    incident_lookup: str = typer.Option(
+        ...,
+        "--incident-lookup",
+        help="Exact incident filename stem or unique lookup suffix",
+    ),
+    organization_id: str = typer.Option(..., "--organization-id"),
+    environment_id: str = typer.Option(..., "--environment-id"),
+    issued_at: str = typer.Option(..., "--issued-at", help="Explicit RFC 3339 issue time"),
+    incident_id: str = typer.Option(
+        ..., "--incident-id", help="Canonical stored incident identity"
+    ),
+    workflow_id: str = typer.Option(..., "--workflow-id"),
+    incident_snapshot_id: Optional[str] = typer.Option(None, "--incident-snapshot-id"),
+    incident_snapshot_state_id: Optional[str] = typer.Option(
+        None,
+        "--incident-snapshot-state-id",
+    ),
+    incident_version: Optional[str] = typer.Option(None, "--incident-version"),
+    incident_version_state_id: Optional[str] = typer.Option(
+        None,
+        "--incident-version-state-id",
+    ),
+    workflow_snapshot_id: Optional[str] = typer.Option(None, "--workflow-snapshot-id"),
+    workflow_snapshot_state_id: Optional[str] = typer.Option(
+        None,
+        "--workflow-snapshot-state-id",
+    ),
+    workflow_version: Optional[str] = typer.Option(None, "--workflow-version"),
+    workflow_version_state_id: Optional[str] = typer.Option(
+        None,
+        "--workflow-version-state-id",
+    ),
+) -> None:
+    """Emit canonical IncidentRef V0.1 JSON from one explicit local corpus incident."""
+    try:
+        envelope = build_strict_incident_ref_v0_1_from_corpus(
+            data_root=data_root,
+            incident_lookup=incident_lookup,
+            organization_id=organization_id,
+            environment_id=environment_id,
+            issued_at=issued_at,
+            incident_id=incident_id,
+            workflow_id=workflow_id,
+            incident_snapshot_id=incident_snapshot_id,
+            incident_snapshot_state_id=incident_snapshot_state_id,
+            incident_version=incident_version,
+            incident_version_state_id=incident_version_state_id,
+            workflow_snapshot_id=workflow_snapshot_id,
+            workflow_snapshot_state_id=workflow_snapshot_state_id,
+            workflow_version=workflow_version,
+            workflow_version_state_id=workflow_version_state_id,
+        )
+    except (LookupError, OSError, ValueError) as exc:
+        typer.echo(f"Error: {exc}", err=True)
+        raise typer.Exit(1)
+
+    typer.echo(json.dumps(envelope, separators=(",", ":")))
 
 
 @app.command()
