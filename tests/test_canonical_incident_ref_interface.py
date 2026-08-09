@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+from click import unstyle
 import pytest
 from typer.testing import CliRunner
 
@@ -163,7 +164,7 @@ def test_canonical_ref_v0_1_requires_explicit_data_root() -> None:
 
     assert result.exit_code != 0
     assert result.stdout == ""
-    assert "--data-root" in result.stderr
+    assert "Missing option '--data-root'." in unstyle(result.stderr)
 
 
 def test_mcp_canonical_ref_v0_1_reuses_exact_typed_boundary(tmp_path: Path) -> None:
