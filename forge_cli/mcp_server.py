@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
 from datetime import datetime, timezone
 
+from forge_cli.incident_ref_v0_1 import build_strict_incident_ref_v0_1_from_corpus
 from forge_cli.config import load_config
 from forge_cli.incident_store import (
     AmbiguousIncidentLookupError,
@@ -386,6 +388,50 @@ def forge_incident_ref(incident_id: str) -> str:
         return f"No incident found matching '{incident_id}'."
 
     return json.dumps(incident.to_legacy_ref_envelope(), indent=2)
+
+
+@mcp.tool()
+def forge_canonical_incident_ref_v0_1(
+    data_root: str,
+    incident_lookup: str,
+    organization_id: str,
+    environment_id: str,
+    issued_at: str,
+    incident_id: str,
+    workflow_id: str,
+    incident_snapshot_id: str | None = None,
+    incident_snapshot_state_id: str | None = None,
+    incident_version: str | None = None,
+    incident_version_state_id: str | None = None,
+    workflow_snapshot_id: str | None = None,
+    workflow_snapshot_state_id: str | None = None,
+    workflow_version: str | None = None,
+    workflow_version_state_id: str | None = None,
+) -> str:
+    """Emit canonical IncidentRef V0.1 JSON from one explicit local corpus incident.
+
+    Every scope, identity, time, pin, and pin state identity is caller-supplied.
+    At least one complete immutable snapshot or version pair is required for
+    both the incident and workflow identities.
+    """
+    envelope = build_strict_incident_ref_v0_1_from_corpus(
+        data_root=Path(data_root),
+        incident_lookup=incident_lookup,
+        organization_id=organization_id,
+        environment_id=environment_id,
+        issued_at=issued_at,
+        incident_id=incident_id,
+        workflow_id=workflow_id,
+        incident_snapshot_id=incident_snapshot_id,
+        incident_snapshot_state_id=incident_snapshot_state_id,
+        incident_version=incident_version,
+        incident_version_state_id=incident_version_state_id,
+        workflow_snapshot_id=workflow_snapshot_id,
+        workflow_snapshot_state_id=workflow_snapshot_state_id,
+        workflow_version=workflow_version,
+        workflow_version_state_id=workflow_version_state_id,
+    )
+    return json.dumps(envelope, separators=(",", ":"))
 
 
 @mcp.tool()

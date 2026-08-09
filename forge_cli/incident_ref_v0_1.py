@@ -3,9 +3,11 @@ from __future__ import annotations
 import calendar
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from forge_cli.models import FORGE_PRODUCER_SYSTEM, PROOFHOUSE_SHARED_CONTRACT_VERSION, Incident
+from forge_cli.incident_store import find_incident
 
 _RFC3339_DATE_TIME = re.compile(
     r"^(?P<year>\d{4})-(?P<month>0[1-9]|1[0-2])-(?P<day>\d{2})"
@@ -153,6 +155,77 @@ def _emit_pins(identity: _CanonicalIdentity) -> dict[str, str]:
     if identity.version is not None:
         pins["version"] = identity.version.value
     return pins
+
+
+def _optional_state_pin(
+    value: str | None,
+    state_id: str | None,
+    field_name: str,
+) -> ImmutableStatePin | None:
+    if value is None and state_id is None:
+        return None
+    if value is None or state_id is None:
+        raise ValueError(f"{field_name} requires both a pin and its state identity")
+    return ImmutableStatePin(value=value, state_id=state_id)
+
+
+def build_strict_incident_ref_v0_1_from_corpus(
+    *,
+    data_root: Path,
+    incident_lookup: str,
+    organization_id: str,
+    environment_id: str,
+    issued_at: str,
+    incident_id: str,
+    workflow_id: str,
+    incident_snapshot_id: str | None = None,
+    incident_snapshot_state_id: str | None = None,
+    incident_version: str | None = None,
+    incident_version_state_id: str | None = None,
+    workflow_snapshot_id: str | None = None,
+    workflow_snapshot_state_id: str | None = None,
+    workflow_version: str | None = None,
+    workflow_version_state_id: str | None = None,
+) -> dict[str, object]:
+    """Load one explicit local incident and emit its strict canonical V0.1 envelope."""
+    incident = find_incident(data_root / "incidents", incident_lookup)
+    if incident is None:
+        raise ValueError("incident not found in explicit Forge corpus")
+
+    incident_identity = CanonicalIncidentIdentity(
+        incident_id=incident_id,
+        snapshot=_optional_state_pin(
+            incident_snapshot_id,
+            incident_snapshot_state_id,
+            "incident snapshot",
+        ),
+        version=_optional_state_pin(
+            incident_version,
+            incident_version_state_id,
+            "incident version",
+        ),
+    )
+    workflow_identity = CanonicalWorkflowIdentity(
+        workflow_id=workflow_id,
+        snapshot=_optional_state_pin(
+            workflow_snapshot_id,
+            workflow_snapshot_state_id,
+            "workflow snapshot",
+        ),
+        version=_optional_state_pin(
+            workflow_version,
+            workflow_version_state_id,
+            "workflow version",
+        ),
+    )
+    return build_strict_incident_ref_v0_1(
+        incident,
+        organization_id=organization_id,
+        environment_id=environment_id,
+        issued_at=issued_at,
+        incident_identity=incident_identity,
+        workflow_identity=workflow_identity,
+    )
 
 
 def build_strict_incident_ref_v0_1(

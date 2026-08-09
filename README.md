@@ -202,6 +202,7 @@ Available tools:
 - `forge_list`
 - `forge_show`
 - `forge_incident_ref`
+- `forge_canonical_incident_ref_v0_1`
 - `forge_stats`
 - `forge_playbook_list`
 - `forge_playbook_show`
@@ -295,7 +296,41 @@ Governance remains the approval and export-control plane. Forge may record that 
 
 `forge ref <id>` and the `forge_incident_ref` MCP tool preserve the legacy noncanonical 37-field projection for one release. They use compatibility inference and the explicit sentinels `organization_id: "unscoped"` and `environment_id: "default"`; they must not be consumed as canonical IncidentRef V0.1.
 
-The separate strict canonical producer API is `forge_cli.incident_ref_v0_1.build_strict_incident_ref_v0_1`. It requires explicit organization/environment scope plus exact immutable incident and workflow identities, rejects cross-state snapshot/version pairs, emits only the closed metadata-only V0.1 core, and never infers scope from `project`. Parity is pinned to accepted Contracts protected main and the Forge change remains draft pending facilitator review; see `CONTRACTS.md`.
+The strict canonical producer API is `forge_cli.incident_ref_v0_1.build_strict_incident_ref_v0_1`. It requires explicit organization/environment scope plus exact immutable incident and workflow identities, rejects cross-state snapshot/version pairs, emits only the closed metadata-only V0.1 core, and never infers scope from `project`. Producer parity is pinned to accepted Contracts protected main; see `CONTRACTS.md`.
+
+The supported noninteractive local CLI is `forge canonical-ref-v0-1`. It reads
+one incident only from the explicit `--data-root` corpus; it does not consult
+`FORGE_DATA_ROOT`, project names, tags, the clock, or mutable head/latest
+values. Every pin requires its corresponding `--*-state-id`; provide at least
+one snapshot or version pair for both identities:
+
+```bash
+forge canonical-ref-v0-1 \
+  --data-root ./forge-data \
+  --incident-lookup example-document-ops-redaction-miss \
+  --organization-id proofhouse-demo \
+  --environment-id internal-demo \
+  --issued-at 2026-04-27T12:02:00+00:00 \
+  --incident-id example-document-ops-redaction-miss \
+  --incident-snapshot-id incident-snapshot:example-document-ops-redaction-miss:g1 \
+  --incident-snapshot-state-id state:incident:example-document-ops-redaction-miss:g1 \
+  --workflow-id document_ops_regulated_review_v0 \
+  --workflow-snapshot-id snapshot:document_ops_regulated_review_v0:g10-governance-preflight \
+  --workflow-snapshot-state-id state:workflow:document_ops_regulated_review_v0:g10-governance-preflight
+```
+
+Success writes one compact canonical metadata-only JSON envelope to stdout.
+Validation and lookup failures write a compact error to stderr and exit
+nonzero. `forge_canonical_incident_ref_v0_1` exposes the same typed,
+read-only implementation over the existing local-only MCP server; it adds no
+transport or bind behavior.
+
+`examples/document-operations/incident-ref-v0.1.expected.json` is the exact
+accepted document-operations consumer envelope from
+`im-sham/opsorchestra@3e9804144270f17bbfdb62507fd16ad10b2533c2`,
+`data/demo_sets/document_ops/regulated_document_review_workflow.json` blob
+`5371742934f729686c532d1ff161a348acd6a2d0`. The example command above
+reproduces that envelope exactly from Forge's sanitized incident fixture.
 
 ### Severity Levels
 

@@ -1,0 +1,32 @@
+{
+  "cache_policy": "summary_snapshot",
+  "canonical_owner": "forge",
+  "contract_name": "IncidentRef",
+  "contract_version": "proofhouse-shared-contracts/v0.1",
+  "issued_at": "2026-04-27T12:02:00+00:00",
+  "producer_capability": "forge",
+  "producer_system": "proofhouse-forge",
+  "ref": {
+    "created_at": "2026-04-26T00:00:00Z",
+    "environment_id": "internal-demo",
+    "external_uri": "forge://incident/example-document-ops-redaction-miss",
+    "failure_type": "safety_boundary_violation",
+    "incident_id": "example-document-ops-redaction-miss",
+    "organization_id": "proofhouse-demo",
+    "ref_id": "incident:example-document-ops-redaction-miss",
+    "ref_type": "incident",
+    "severity": "safety-critical",
+    "snapshot_id": "incident-snapshot:example-document-ops-redaction-miss:g1",
+    "source_capability": "forge",
+    "summary": "Forge incident example-document-ops-redaction-miss: safety-critical safety_boundary_violation",
+    "workflow_ref": {
+      "environment_id": "internal-demo",
+      "organization_id": "proofhouse-demo",
+      "ref_id": "workflow:document_ops_regulated_review_v0",
+      "ref_type": "workflow",
+      "snapshot_id": "snapshot:document_ops_regulated_review_v0:g10-governance-preflight",
+      "source_capability": "workflow_context",
+      "workflow_id": "document_ops_regulated_review_v0"
+    }
+  }
+}

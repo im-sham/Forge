@@ -60,7 +60,7 @@ SURFACE_EXPORTS: dict[str, tuple[str, ...]] = {
 DEPLOYABLE_SURFACES = ("core", "mcp", "anthropic", "openai")
 DIRECT_DEPENDENCIES: dict[str, set[str]] = {
     "core": {"typer", "rich", "pyyaml"},
-    "mcp": {"typer", "rich", "pyyaml", "mcp", "uvicorn"},
+    "mcp": {"typer", "rich", "pyyaml", "cryptography", "mcp", "uvicorn"},
     "anthropic": {"typer", "rich", "pyyaml", "anthropic"},
     "openai": {"typer", "rich", "pyyaml", "openai"},
 }
